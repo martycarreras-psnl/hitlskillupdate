@@ -1,6 +1,65 @@
 {
-  "name": "papps-code-app-starter",
+  "name": "hitl-skill-improvement",
   "private": true,
-  "version": "0.0.0",
-  "description": "Run `npx @pacaf/wizard-ux@latest` to scaffold this Code App."
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@fluentui/react-components": "^9.56.0",
+    "@fluentui/react-icons": "^2.0.270",
+    "@microsoft/power-apps": "^1.0.3",
+    "@tanstack/react-query": "^5.62.0",
+    "concurrently": "^9.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.16.0",
+    "@pacaf/agent-instructions": "3.8.1",
+    "@pacaf/scripts": "4.0.0",
+    "@playwright/test": "^1.49.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.0",
+    "eslint": "^9.16.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "jsdom": "^25.0.0",
+    "prettier": "^3.4.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "5.7.3",
+    "typescript-eslint": "^8.18.0",
+    "vite": "^5.4.0",
+    "vitest": "^2.1.0"
+  },
+  "scripts": {
+    "dev": "concurrently \"vite --port 3000\" \"pac code run\"",
+    "dev:local": "VITE_USE_MOCK=true vite --port 3000",
+    "prototype:seed": "pacaf-seed dataverse/planning-payload.json",
+    "typecheck": "tsc --noEmit",
+    "prebuild": "pacaf-patch-datasources",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/ --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:smoke": "vitest run --reporter=verbose src/App.test.tsx",
+    "test:e2e": "playwright test",
+    "setup:auth": "pacaf-setup-auth",
+    "pac": "pacaf-pac",
+    "deploy": "npm run build && pacaf-pac-safe --target dev --profile-type user --mutating code push",
+    "sync:foundations": "pacaf-update",
+    "sync:foundations:check": "pacaf-update --check"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@azure/msal-node-extensions",
+      "@azure/msal-node-runtime",
+      "esbuild",
+      "keytar",
+      "node-pty"
+    ]
+  }
 }

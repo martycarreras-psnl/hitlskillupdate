@@ -1,0 +1,5 @@
+allowBuilds:
+  '@azure/msal-node-extensions': set this to true or false
+  '@azure/msal-node-runtime': set this to true or false
+  esbuild: set this to true or false
+  keytar: set this to true or false

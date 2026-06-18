@@ -1,19 +1,15 @@
-# Secrets — never commit these
-.env
+# Secrets
 .env.local
 .env.*.local
 
-# Local Power Platform state
+# Power Platform
 .pac/
 auth.json
-power.config.json
-.wizard-state.json
 
-# Node
+# Dependencies
 node_modules/
-.pnpm-store/
 
-# Build output
+# Build
 dist/
 
 # Tests
@@ -32,9 +28,9 @@ Thumbs.db
 # Solution zips
 solution/*.zip
 
-# Logs and temp
+# Wizard state
+.wizard-state.json
+
+# Temp
 *.tmp
 *.log
-
-# Migration archive (from pacaf-migrate-thin)
-.pacaf-archive/

@@ -1,13 +1,15 @@
-# Claude Code — Power Apps Code App
-
 @AGENTS.md
 
-This repository is a **Power Apps Code App** generated from the [Power Apps Code App Foundations](https://github.com/martycarreras-psnl/PAppsCAFoundations) template.
+## Claude Code
 
-See `AGENTS.md` (imported above) for the first move on a fresh clone and the non-negotiable architecture rules.
+This repository uses `.claude/rules/` for path-scoped guidance that mirrors the canonical `.github/instructions/` files. Rules load automatically when you work with files matching their `paths` frontmatter.
 
-## TL;DR
+For the full agent support matrix and verification steps, see [docs/agent-support.md](docs/agent-support.md).
 
-- **Fresh clone?** Run `npx @pacaf/wizard-ux@latest` (or `npx @pacaf/wizard@latest` for headless) before writing any app code.
-- **Need the full guidance?** Run `npx @pacaf/agent-instructions sync` to materialize `.claude/rules/`, `.github/instructions/`, and the full `CLAUDE.md` / `AGENTS.md` — this replaces this bootstrap file.
-- This is a Power Apps Code App: no non-Power-Platform hosting, no alternative frameworks, Fluent UI v9 only, port 3000, `src/generated/` is read-only, HashRouter not BrowserRouter, no secrets in source.
+### Key conventions
+
+- The canonical source of truth is `.github/instructions/*.instructions.md`. The `.claude/rules/` files are generated projections — do not edit them directly.
+- `AGENTS.md` (imported above) contains the root architectural contract shared by all coding agents.
+- `src/generated/` is read-only. Never edit files there.
+- Port 3000 is required for local dev. Do not change it.
+- This is a Power Apps Code App. Do not suggest non-Power-Platform deployment targets, alternative frameworks, or CSS libraries other than Fluent UI v9.
