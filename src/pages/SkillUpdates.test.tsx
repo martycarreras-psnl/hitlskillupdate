@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '../../tests/setup/test-utils';
+import { render, screen, fireEvent, waitFor, within } from '../../tests/setup/test-utils';
 import { App } from '@/App';
 
 // These tests exercise the rejection → Skill Update Request flow end-to-end against
@@ -67,5 +67,19 @@ describe('Skill Updates screen', () => {
       expect(screen.getByText(/infer locale from the merchant address/i)).toBeTruthy();
       expect(screen.queryByText(/detect a separate "Tax" line/i)).toBeNull();
     });
+  });
+
+  it('opens a document preview dialog (not a navigation) when the document is clicked', async () => {
+    render(<App />, { initialRoute: '/skill-updates' });
+    await screen.findByText(/detect a separate "Tax" line/i);
+
+    // The first seed links to office-supplies-receipt.jpg.
+    fireEvent.click(screen.getAllByRole('button', { name: 'office-supplies-receipt.jpg' })[0]);
+
+    // A modal dialog opens in place — still on the Skill Updates screen.
+    const dialog = await screen.findByRole('dialog');
+    expect(await within(dialog).findByText('Extracted Data')).toBeTruthy();
+    // The skill-updates table is still mounted behind the dialog (status filter present).
+    expect(screen.getByLabelText(/Filter by status/i)).toBeTruthy();
   });
 });

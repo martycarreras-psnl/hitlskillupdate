@@ -3,7 +3,6 @@
 // with filters, and lets a reviewer/admin advance the status. (ADR 0005.)
 
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Menu,
@@ -30,6 +29,7 @@ import { useSkillUpdateRequests, useUpdateSkillUpdateRequest } from '@/hooks/use
 import { SkillUpdateStatus } from '@/types/domain-models';
 import { ALL_SKILL_UPDATE_STATUSES, skillUpdateStatusLabels } from '@/constants/status';
 import { SkillUpdateStatusBadge } from '@/components/StatusBadge';
+import { DocumentPreviewDialog } from '@/components/DocumentPreviewDialog';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
 
 const useStyles = makeStyles({
@@ -60,11 +60,11 @@ function formatDate(value?: string): string {
 
 export function SkillUpdatesPage() {
   const styles = useStyles();
-  const navigate = useNavigate();
   const { data: requests, isLoading } = useSkillUpdateRequests();
   const updateRequest = useUpdateSkillUpdateRequest();
 
   const [statusFilter, setStatusFilter] = useState<'all' | SkillUpdateStatus>('all');
+  const [previewDocId, setPreviewDocId] = useState<string | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -135,7 +135,7 @@ export function SkillUpdatesPage() {
                       appearance="transparent"
                       size="small"
                       className={styles.docLink}
-                      onClick={() => navigate(`/documents/${req.documentId}`)}
+                      onClick={() => setPreviewDocId(req.documentId)}
                     >
                       {req.documentName ?? req.documentId}
                     </Button>
@@ -172,6 +172,12 @@ export function SkillUpdatesPage() {
           </Table>
         )}
       </Card>
+
+      <DocumentPreviewDialog
+        documentId={previewDocId}
+        open={previewDocId !== null}
+        onClose={() => setPreviewDocId(null)}
+      />
     </div>
   );
 }
