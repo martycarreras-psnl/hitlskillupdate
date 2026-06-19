@@ -133,8 +133,31 @@ def provision_option_sets(payload):
         name = spec["globalOptionSetName"]
         if exists(f"/GlobalOptionSetDefinitions(Name='{name}')"):
             print(f"  = exists   option set {name}")
+            reconcile_option_set(spec)
             continue
         create_with_retry("/GlobalOptionSetDefinitions", option_set_body(spec), f"option set {name}")
+
+
+def reconcile_option_set(spec):
+    """Insert any option values present in the payload but missing on an existing set.
+    Makes the option-set phase idempotent when new choices are added over time."""
+    name = spec["globalOptionSetName"]
+    status, payload = request("GET", f"/GlobalOptionSetDefinitions(Name='{name}')?$select=Name")
+    if status != 200 or not isinstance(payload, dict):
+        print(f"    ! could not read existing options for {name}: HTTP {status}")
+        return
+    existing = {o.get("Value") for o in payload.get("Options", [])}
+    for o in spec["options"]:
+        if o["value"] in existing:
+            continue
+        body = {
+            "OptionSetName": name,
+            "Value": o["value"],
+            "Label": label(o["label"]),
+            "Description": label(o.get("description", "")),
+            "SolutionUniqueName": SOLUTION,
+        }
+        create_with_retry("/InsertOptionValue", body, f"option {o['label']} ({o['value']}) on {name}")
 
 
 # ─────────────────────────────────────────────────────────────── tables ──

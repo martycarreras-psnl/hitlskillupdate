@@ -30,6 +30,12 @@ export enum SkillUpdateStatus {
   InProgress = 720670001,
   Completed = 720670002,
   Dismissed = 720670003,
+  /**
+   * The reviewer approved the agent's recommendation and wants it implemented. An
+   * agent picks this state up as the trigger to apply the recommendation to the skill,
+   * then advances the request to Completed.
+   */
+  Approved = 720670004,
 }
 
 /**

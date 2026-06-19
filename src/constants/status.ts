@@ -47,6 +47,7 @@ export const ALL_PROCESSING_STATUSES: ProcessingStatus[] = [
 export const skillUpdateStatusLabels: Record<SkillUpdateStatus, string> = {
   [SkillUpdateStatus.New]: 'New',
   [SkillUpdateStatus.InProgress]: 'In Progress',
+  [SkillUpdateStatus.Approved]: 'Approved — Implement',
   [SkillUpdateStatus.Completed]: 'Completed',
   [SkillUpdateStatus.Dismissed]: 'Dismissed',
 };
@@ -54,6 +55,7 @@ export const skillUpdateStatusLabels: Record<SkillUpdateStatus, string> = {
 export const skillUpdateStatusColors: Record<SkillUpdateStatus, BadgeProps['color']> = {
   [SkillUpdateStatus.New]: 'brand',
   [SkillUpdateStatus.InProgress]: 'warning',
+  [SkillUpdateStatus.Approved]: 'important',
   [SkillUpdateStatus.Completed]: 'success',
   [SkillUpdateStatus.Dismissed]: 'subtle',
 };
@@ -61,6 +63,7 @@ export const skillUpdateStatusColors: Record<SkillUpdateStatus, BadgeProps['colo
 export const ALL_SKILL_UPDATE_STATUSES: SkillUpdateStatus[] = [
   SkillUpdateStatus.New,
   SkillUpdateStatus.InProgress,
+  SkillUpdateStatus.Approved,
   SkillUpdateStatus.Completed,
   SkillUpdateStatus.Dismissed,
 ];

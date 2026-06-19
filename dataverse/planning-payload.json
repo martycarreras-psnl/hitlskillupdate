@@ -49,7 +49,8 @@
         { "label": "New", "value": 720670000, "description": "Raised by a reviewer on rejection; not yet triaged." },
         { "label": "In Progress", "value": 720670001, "description": "A skill owner is implementing the suggested fix." },
         { "label": "Completed", "value": 720670002, "description": "The suggested fix has been applied to the agent skill." },
-        { "label": "Dismissed", "value": 720670003, "description": "Reviewed and judged not actionable." }
+        { "label": "Dismissed", "value": 720670003, "description": "Reviewed and judged not actionable." },
+        { "label": "Approved — Implement", "value": 720670004, "description": "The reviewer approved the agent's recommendation and wants it implemented; an agent applies it, then sets Completed." }
       ]
     }
   ],
@@ -362,7 +363,7 @@
           "globalOptionSetName": "msfthitl_skillupdatestatus",
           "requiredLevel": "ApplicationRequired",
           "defaultValue": 720670000,
-          "description": "Processing lifecycle: New -> In Progress -> Completed / Dismissed."
+          "description": "Processing lifecycle: New -> In Progress -> Completed / Dismissed; Approved signals the agent to implement the recommendation."
         },
         {
           "schemaName": "msfthitl_requestedon",
