@@ -7,19 +7,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Text, makeStyles, tokens } from '@fluentui/react-components';
 import * as pdfjsLib from 'pdfjs-dist';
+// Side-effect import: registers globalThis.pdfjsWorker.WorkerMessageHandler so
+// PDF.js detects a main-thread handler and NEVER attempts `new Worker()`. The
+// deployed Power Apps host enforces `worker-src 'none'`, which would block (and
+// log a CSP violation for) any worker creation; pre-registering the handler
+// avoids the attempt entirely and runs parsing on the main thread. Bundled into
+// this lazily-loaded chunk, so it only downloads when a PDF is actually opened.
+import 'pdfjs-dist/build/pdf.worker.min.mjs';
 import { LoadingState } from '@/components/EmptyState';
-
-// The deployed Power Apps host enforces `worker-src 'none'`, so PDF.js can't
-// spawn a real Worker — it falls back to its main-thread "fake worker", which
-// dynamically imports this script. We point it at a same-origin `.js` asset
-// (copied into public/ by scripts/copy-pdf-worker.mjs) referenced by an
-// absolute URL so the import resolves under `script-src 'self'` with the
-// correct `text/javascript` MIME. (A bundled `.mjs` is served as
-// octet-stream by the host and rejected by strict module-MIME checks.)
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdf.worker.min.js',
-  document.baseURI,
-).href;
 
 const useStyles = makeStyles({
   root: {
