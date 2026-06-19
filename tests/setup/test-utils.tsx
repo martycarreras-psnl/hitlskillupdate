@@ -1,8 +1,9 @@
 import { render } from '@testing-library/react';
 import type { RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { FluentProvider, webLightTheme } from '@fluentui/react-components';
+import { FluentProvider } from '@fluentui/react-components';
 import { MemoryRouter } from 'react-router-dom';
+import { appLightTheme } from '@/theme';
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -24,7 +25,7 @@ function customRender(ui: React.ReactElement, options: CustomRenderOptions = {})
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <FluentProvider theme={webLightTheme}>
+        <FluentProvider theme={appLightTheme}>
           <MemoryRouter initialEntries={[initialRoute]}>
             {children}
           </MemoryRouter>

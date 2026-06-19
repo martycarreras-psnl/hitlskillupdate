@@ -16,13 +16,13 @@ describe('App — smoke tests', () => {
 
   it('renders the navigation rail', () => {
     render(<App />);
-    expect(screen.getByRole('tab', { name: /Dashboard/i })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: /Documents/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Dashboard' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Documents' })).toBeTruthy();
   });
 
-  it('shows the Admin Settings tab for the default Admin role', () => {
+  it('shows the Admin Settings nav item for the default Admin role', () => {
     render(<App />);
-    expect(screen.getByRole('tab', { name: /Admin Settings/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Admin Settings' })).toBeTruthy();
   });
 
   it('loads seeded documents on the Documents screen', async () => {
