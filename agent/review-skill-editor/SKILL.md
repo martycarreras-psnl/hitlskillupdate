@@ -114,18 +114,24 @@ skill and recommend the exact rule/wording to change, where, and any risks. **Ca
 - Present the proposed new content (or before/after diff) tied to the request's suggested fix.
 - (Optional) `update_record` the request to **In Progress** (`720670001`) if tracking lifecycle.
 
-### Step 5 — Confirm, then write the skill
+### Step 5 — Write the skill
 
-- **Get explicit confirmation before `upsert_skill`.** State: "This updates the organization's
-  review-flagging policy for all agents — proceed?"
-- On approval, `upsert_skill` for `review-flagging` with the **full updated content** (upsert
+- **If you are applying a recommendation that was already produced/saved** (the user triggered
+  "incorporate the recommendation" / "apply SUR-…'s recommendation"): the approach is already
+  settled — **do not re-verify or ask for confirmation again.** Proceed straight to
+  `upsert_skill` with the approach arrived at from the recommendation.
+- **Only when no recommendation has been settled yet** (a fresh free-form edit with no prior
+  recommendation) get a single explicit confirmation before `upsert_skill`: "This updates the
+  organization's review-flagging policy for all agents — proceed?"
+- In both cases, `upsert_skill` for `review-flagging` with the **full updated content** (upsert
   replaces the body — include everything, not just changed lines).
 
 ### Step 6 — Close out the request
 
-Offer to set the request status via `update_record`: **Completed** (`720670002`) +
-`msfthitl_resolvedon` = now if implemented, or **Dismissed** (`720670003`) + `msfthitl_resolvedon`
-if the user decides not to act. Status fields only; user go-ahead only.
+**After a successful skill write, always** `update_record` the request to **Completed**
+(`msfthitl_skillupdatestatus = 720670002`) with `msfthitl_resolvedon` = now — automatically, in
+the same run, no prompt. Use **Dismissed** (`720670003`) + `msfthitl_resolvedon` only when the
+user explicitly decides not to apply the change (no skill write happened). Status fields only.
 
 ### Step 7 — Verify and report
 
@@ -138,13 +144,19 @@ if the user decides not to act. Status fields only; user go-ahead only.
 ## Examples
 
 - **"Process skill update request SUR-014."** (apply) → `read_query` the request; summarize its
-  suggested fix; `search`+`describe` `review-flagging`; compose the smallest edit; show the
-  diff; confirm; `upsert_skill`; offer to mark the request **Completed**; re-`describe`; report.
+  suggested fix; `search`+`describe` `review-flagging`; compose the smallest edit; if a
+  recommendation was already settled, `upsert_skill` **without re-confirming**, else confirm
+  once; **mark the request Completed**; re-`describe`; report.
+- **"Incorporate SUR-014's recommendation."** (apply settled recommendation) → `read_query` the
+  request (read `msfthitl_agentrecommendation`); `describe` the skill; apply the recommendation
+  as-is and `upsert_skill` **without further confirmation**; **mark the request Completed**;
+  verify; report.
 - **"What does request SUR-014 suggest, and how should I apply it?"** (advisory) → `read_query`
   the request; `describe` the skill; recommend the precise change and call out risks; **write
   nothing**; offer to apply.
-- **"Raise the invoice review threshold to $5,000."** (free-form apply) → `describe` the skill;
-  change the invoice-total rule 2500 → 5000; confirm; `upsert_skill`; verify; report.
+- **"Raise the invoice review threshold to $5,000."** (free-form apply, no prior recommendation)
+  → `describe` the skill; change the invoice-total rule 2500 → 5000; confirm once; `upsert_skill`;
+  verify; report.
 
 ## Invariants
 
@@ -152,10 +164,15 @@ if the user decides not to act. Status fields only; user go-ahead only.
   `msfthitl_skillupdaterequests` (read + status only).
 - Only `read_query`, `search`, `describe`, `update_record`, `upsert_skill` are used — never
   `delete_skill`, `delete_record`, `file_download`, or any other table/record/file tool.
-- On `msfthitl_skillupdaterequests`, only `msfthitl_skillupdatestatus` / `msfthitl_resolvedon`
-  are written; rows are never created or deleted.
+- On `msfthitl_skillupdaterequests`, only `msfthitl_agentrecommendation`,
+  `msfthitl_skillupdatestatus`, and `msfthitl_resolvedon` are written; rows are never created
+  or deleted.
 - Advisory mode writes nothing.
-- Every skill write is preceded by a `describe` (read current) and explicit user confirmation.
+- Applying a recommendation that was already produced/saved proceeds **without re-confirmation**;
+  only a fresh free-form edit with no settled recommendation requires a single confirmation
+  before `upsert_skill`.
+- **Every successful skill write is always followed by marking the request Completed**
+  (`msfthitl_skillupdatestatus = 720670002` + `msfthitl_resolvedon`), automatically.
 - `upsert_skill` always sends the complete updated skill body, not a partial fragment.
 - After every skill write, the skill is re-`describe`d to confirm persistence and the change is
   reported as old → new.

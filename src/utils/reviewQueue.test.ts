@@ -3,6 +3,7 @@ import {
   reviewReason,
   isActionableReview,
   isAwaitingProcessing,
+  canSendToReview,
 } from './reviewQueue';
 import {
   ProcessingStatus,
@@ -138,5 +139,41 @@ describe('isAwaitingProcessing', () => {
         doc({ flaggedForReview: true, processingStatus: ProcessingStatus.Failed }),
       ),
     ).toBe(false);
+  });
+});
+
+describe('canSendToReview', () => {
+  it('is true for a processed, never-flagged document', () => {
+    expect(canSendToReview(doc({ processingStatus: ProcessingStatus.Processed }))).toBe(true);
+  });
+
+  it('is true for a processed document already handled (approved or rejected)', () => {
+    expect(
+      canSendToReview(
+        doc({ processingStatus: ProcessingStatus.Processed, reviewStatus: ReviewStatus.Rejected }),
+      ),
+    ).toBe(true);
+    expect(
+      canSendToReview(
+        doc({ processingStatus: ProcessingStatus.Processed, reviewStatus: ReviewStatus.Approved }),
+      ),
+    ).toBe(true);
+  });
+
+  it('is false when the document is already actionable in the queue', () => {
+    expect(
+      canSendToReview(
+        doc({
+          flaggedForReview: true,
+          processingStatus: ProcessingStatus.Processed,
+          reviewStatus: ReviewStatus.PendingReview,
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it('is false for documents not yet processed or failed', () => {
+    expect(canSendToReview(doc({ processingStatus: ProcessingStatus.Queued }))).toBe(false);
+    expect(canSendToReview(doc({ processingStatus: ProcessingStatus.Failed }))).toBe(false);
   });
 });

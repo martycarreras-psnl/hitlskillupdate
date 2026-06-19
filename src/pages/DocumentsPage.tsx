@@ -42,16 +42,22 @@ import {
   useId,
   useToastController,
 } from '@fluentui/react-components';
-import { ArrowUpload24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { useDocuments, useCreateDocument, useDeleteDocument, queryKeys } from '@/hooks/useDocuments';
-import { ProcessingStatus } from '@/types/domain-models';
+import {
+  ArrowUpload24Regular,
+  Delete24Regular,
+  ClipboardTaskListLtr24Regular,
+} from '@fluentui/react-icons';
+import { useDocuments, useCreateDocument, useDeleteDocument, useUpdateDocument, queryKeys } from '@/hooks/useDocuments';
+import { ProcessingStatus, ReviewStatus } from '@/types/domain-models';
 import type { DocumentRecord } from '@/types/domain-models';
 import {
   ALL_PROCESSING_STATUSES,
+  canReview,
   isAdmin,
   processingStatusLabels,
 } from '@/constants/status';
 import { partitionUploadableFiles } from '@/utils/fileUpload';
+import { canSendToReview } from '@/utils/reviewQueue';
 import { useRole } from '@/hooks/useRole';
 import { ProcessingStatusBadge, ReviewStatusBadge } from '@/components/StatusBadge';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
@@ -121,9 +127,11 @@ export function DocumentsPage() {
   const { data: documents, isLoading } = useDocuments();
   const createDocument = useCreateDocument();
   const deleteDocument = useDeleteDocument();
+  const updateDocument = useUpdateDocument();
   const queryClient = useQueryClient();
   const { role } = useRole();
   const admin = isAdmin(role);
+  const reviewer = canReview(role);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toasterId = useId('documents-toaster');
@@ -269,6 +277,23 @@ export function DocumentsPage() {
     );
   }
 
+  // Manually push a processed Document into the actionable review queue so a reviewer can
+  // correct mistakes, even if the random draw never flagged it. Flags it and sets review
+  // status to Pending Review (which makes reviewQueue.reviewReason() return 'sampled').
+  async function sendToReview(doc: DocumentRecord) {
+    await updateDocument.mutateAsync({
+      id: doc.id,
+      changes: { flaggedForReview: true, reviewStatus: ReviewStatus.PendingReview },
+    });
+    dispatchToast(
+      <Toast>
+        <ToastTitle>Sent to review</ToastTitle>
+        <ToastBody>“{doc.documentName}” is now in the review queue.</ToastBody>
+      </Toast>,
+      { intent: 'success' },
+    );
+  }
+
   return (
     <div
       className={styles.root}
@@ -365,7 +390,7 @@ export function DocumentsPage() {
                 <TableHeaderCell>Processing</TableHeaderCell>
                 <TableHeaderCell>Review</TableHeaderCell>
                 <TableHeaderCell>Drawn</TableHeaderCell>
-                {admin ? <TableHeaderCell>Actions</TableHeaderCell> : null}
+                {reviewer ? <TableHeaderCell>Actions</TableHeaderCell> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -398,16 +423,31 @@ export function DocumentsPage() {
                     </div>
                   </TableCell>
                   <TableCell>{doc.randomDrawValue ?? '—'}</TableCell>
-                  {admin ? (
+                  {reviewer ? (
                     <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Tooltip content="Delete document" relationship="label">
-                        <Button
-                          appearance="subtle"
-                          icon={<Delete24Regular />}
-                          aria-label={`Delete ${doc.documentName}`}
-                          onClick={() => setPendingDelete(doc)}
-                        />
-                      </Tooltip>
+                      <div className={styles.badges}>
+                        {canSendToReview(doc) ? (
+                          <Tooltip content="Send to review queue" relationship="label">
+                            <Button
+                              appearance="subtle"
+                              icon={<ClipboardTaskListLtr24Regular />}
+                              aria-label={`Send ${doc.documentName} to review`}
+                              disabled={updateDocument.isPending}
+                              onClick={() => sendToReview(doc)}
+                            />
+                          </Tooltip>
+                        ) : null}
+                        {admin ? (
+                          <Tooltip content="Delete document" relationship="label">
+                            <Button
+                              appearance="subtle"
+                              icon={<Delete24Regular />}
+                              aria-label={`Delete ${doc.documentName}`}
+                              onClick={() => setPendingDelete(doc)}
+                            />
+                          </Tooltip>
+                        ) : null}
+                      </div>
                     </TableCell>
                   ) : null}
                 </TableRow>

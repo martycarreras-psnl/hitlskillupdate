@@ -56,3 +56,14 @@ export function isAwaitingProcessing(doc: DocumentRecord): boolean {
       doc.reviewStatus === ReviewStatus.NotRequired)
   );
 }
+
+/**
+ * True when a reviewer can manually push this Document into the actionable review queue.
+ * Only processed documents have extracted data to verify/correct, so the manual override
+ * is offered on any processed Document that is not already actionable — whether it was
+ * never sampled (NotRequired) or was already handled (Approved/Rejected) and needs another
+ * look. Documents still processing, failed, or already awaiting review are excluded.
+ */
+export function canSendToReview(doc: DocumentRecord): boolean {
+  return doc.processingStatus === ProcessingStatus.Processed && !isActionableReview(doc);
+}
