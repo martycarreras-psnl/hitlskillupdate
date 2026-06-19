@@ -19,8 +19,9 @@ import {
 } from '@fluentui/react-components';
 import { ArrowLeft24Regular, ArrowClockwise24Regular } from '@fluentui/react-icons';
 import { useDocument, useUpdateDocument } from '@/hooks/useDocuments';
-import { ProcessingStatus, ReviewStatus } from '@/types/domain-models';
+import { ProcessingStatus } from '@/types/domain-models';
 import { canReview } from '@/constants/status';
+import { isActionableReview } from '@/utils/reviewQueue';
 import { useRole } from '@/hooks/useRole';
 import { ProcessingStatusBadge, ReviewStatusBadge } from '@/components/StatusBadge';
 import { SourceFileViewer } from '@/components/SourceFileViewer';
@@ -62,8 +63,7 @@ export function DocumentDetailPage() {
 
   const isProcessed = doc.processingStatus === ProcessingStatus.Processed;
   const isFailed = doc.processingStatus === ProcessingStatus.Failed;
-  const canBeReviewed =
-    doc.flaggedForReview && isProcessed && doc.reviewStatus === ReviewStatus.PendingReview;
+  const canBeReviewed = isActionableReview(doc);
 
   async function requeue() {
     if (!doc) return;

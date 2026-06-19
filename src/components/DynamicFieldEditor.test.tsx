@@ -15,6 +15,12 @@ function Harness({ initial, readOnly }: { initial: ExtractedData; readOnly?: boo
   );
 }
 
+// Harness that supplies a fixed `original` snapshot so changed fields highlight green.
+function HighlightHarness({ initial }: { initial: ExtractedData }) {
+  const [value, setValue] = useState<ExtractedData>(initial);
+  return <DynamicFieldEditor value={value} original={initial} onChange={setValue} />;
+}
+
 const receipt: ExtractedData = {
   merchant: 'Blue Bottle',
   total: 20.12,
@@ -105,5 +111,35 @@ describe('DynamicFieldEditor — read-only mode', () => {
     const input = screen.getByLabelText('Merchant') as HTMLInputElement;
     expect(input.disabled).toBe(true);
     expect(screen.queryByRole('button', { name: 'Add row' })).toBeNull();
+  });
+});
+
+describe('DynamicFieldEditor — changed-field highlight', () => {
+  it('marks a field changed only after its value differs from the original', () => {
+    render(<HighlightHarness initial={receipt} />);
+    const merchant = screen.getByLabelText('Merchant') as HTMLInputElement;
+
+    // Unchanged at first.
+    expect(merchant.getAttribute('data-changed')).toBeNull();
+
+    // Editing flags it as changed (green highlight).
+    fireEvent.change(merchant, { target: { value: 'Stumptown' } });
+    expect(screen.getByLabelText('Merchant').getAttribute('data-changed')).toBe('true');
+
+    // Reverting back to the original clears the highlight.
+    fireEvent.change(screen.getByLabelText('Merchant'), { target: { value: 'Blue Bottle' } });
+    expect(screen.getByLabelText('Merchant').getAttribute('data-changed')).toBeNull();
+  });
+
+  it('does not highlight a field the reviewer has not touched', () => {
+    render(<HighlightHarness initial={receipt} />);
+    fireEvent.change(screen.getByLabelText('Merchant'), { target: { value: 'Stumptown' } });
+    // Total was not edited, so it stays unhighlighted.
+    expect(screen.getByLabelText('Total').getAttribute('data-changed')).toBeNull();
+  });
+
+  it('does not highlight in read-only mode (no original supplied)', () => {
+    render(<Harness initial={receipt} readOnly />);
+    expect(screen.getByLabelText('Merchant').getAttribute('data-changed')).toBeNull();
   });
 });

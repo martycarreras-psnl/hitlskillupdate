@@ -22,8 +22,9 @@ import {
 } from '@fluentui/react-icons';
 import { useDocuments } from '@/hooks/useDocuments';
 import { useRole } from '@/hooks/useRole';
-import { ProcessingStatus, ReviewStatus, type DocumentRecord } from '@/types/domain-models';
+import { ProcessingStatus } from '@/types/domain-models';
 import { canReview } from '@/constants/status';
+import { isActionableReview } from '@/utils/reviewQueue';
 import { ProcessingStatusBadge, ReviewStatusBadge } from '@/components/StatusBadge';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
 import { surfaces } from '@/theme';
@@ -153,14 +154,6 @@ function greetingForHour(hour: number): string {
   if (hour < 12) return 'Good morning';
   if (hour < 18) return 'Good afternoon';
   return 'Good evening';
-}
-
-function isActionableReview(doc: DocumentRecord): boolean {
-  return (
-    doc.flaggedForReview &&
-    doc.processingStatus === ProcessingStatus.Processed &&
-    doc.reviewStatus === ReviewStatus.PendingReview
-  );
 }
 
 export function DashboardPage() {

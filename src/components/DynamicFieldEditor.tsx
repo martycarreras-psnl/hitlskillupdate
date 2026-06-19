@@ -71,22 +71,44 @@ const useStyles = makeStyles({
     color: tokens.colorNeutralForeground3,
     fontStyle: 'italic',
   },
+  // Applied to a leaf control whose value differs from the agent's original value, so
+  // a reviewer can see at a glance which fields they changed during validation.
+  changedControl: {
+    borderRadius: tokens.borderRadiusMedium,
+    boxShadow: `0 0 0 2px ${tokens.colorPaletteGreenBorder2}`,
+    backgroundColor: tokens.colorPaletteGreenBackground1,
+  },
 });
 
 type Json = unknown;
+
+/** Leaf-value equality. Treats null/undefined as equal so an absent original
+ * doesn't read as "changed" when the value is also empty. */
+function leafEqual(a: Json, b: Json): boolean {
+  if (a == null && b == null) return true;
+  return a === b;
+}
 
 interface ControlProps {
   value: Json;
   onChange: (next: Json) => void;
   readOnly?: boolean;
   ariaLabel?: string;
+  /** The agent's original value at this position, used to highlight reviewer edits. */
+  originalValue?: Json;
+  /** Whether change-highlighting is active (review mode, not read-only). */
+  highlight?: boolean;
 }
 
 // ── Single value → control ────────────────────────────────────────────────────
 
-function ValueControl({ value, onChange, readOnly, ariaLabel }: ControlProps) {
+function ValueControl({ value, onChange, readOnly, ariaLabel, originalValue, highlight }: ControlProps) {
   const styles = useStyles();
   const kind = inferFieldKind(value);
+  const isLeaf = kind === 'boolean' || kind === 'number' || kind === 'date' || kind === 'string' || kind === 'null';
+  const changed = Boolean(highlight) && !readOnly && isLeaf && !leafEqual(value, originalValue);
+  const changedClass = changed ? styles.changedControl : undefined;
+  const changedAttr = changed ? 'true' : undefined;
 
   switch (kind) {
     case 'boolean':
@@ -95,6 +117,8 @@ function ValueControl({ value, onChange, readOnly, ariaLabel }: ControlProps) {
           checked={Boolean(value)}
           disabled={readOnly}
           aria-label={ariaLabel}
+          className={changedClass}
+          data-changed={changedAttr}
           onChange={(_e, data) => onChange(data.checked)}
         />
       );
@@ -105,6 +129,8 @@ function ValueControl({ value, onChange, readOnly, ariaLabel }: ControlProps) {
           value={String(value ?? '')}
           disabled={readOnly}
           aria-label={ariaLabel}
+          className={changedClass}
+          data-changed={changedAttr}
           onChange={(_e, data) => {
             const n = Number(data.value);
             onChange(data.value === '' || Number.isNaN(n) ? 0 : n);
@@ -118,6 +144,8 @@ function ValueControl({ value, onChange, readOnly, ariaLabel }: ControlProps) {
           value={toDateInputValue(String(value ?? ''))}
           disabled={readOnly}
           aria-label={ariaLabel}
+          className={changedClass}
+          data-changed={changedAttr}
           onChange={(_e, data) => onChange(data.value)}
         />
       );
@@ -126,6 +154,8 @@ function ValueControl({ value, onChange, readOnly, ariaLabel }: ControlProps) {
         <div className={styles.nested}>
           <ObjectFields
             value={(value ?? {}) as ExtractedData}
+            original={originalValue as ExtractedData | undefined}
+            highlight={highlight}
             onChange={(next) => onChange(next)}
             readOnly={readOnly}
           />
@@ -135,6 +165,8 @@ function ValueControl({ value, onChange, readOnly, ariaLabel }: ControlProps) {
       return (
         <ObjectArrayTable
           rows={(value as Array<Record<string, unknown>>) ?? []}
+          originalRows={(originalValue as Array<Record<string, unknown>> | undefined)}
+          highlight={highlight}
           onChange={(next) => onChange(next)}
           readOnly={readOnly}
         />
@@ -143,6 +175,8 @@ function ValueControl({ value, onChange, readOnly, ariaLabel }: ControlProps) {
       return (
         <PrimitiveArrayEditor
           items={(value as Json[]) ?? []}
+          originalItems={(originalValue as Json[] | undefined)}
+          highlight={highlight}
           onChange={(next) => onChange(next)}
           readOnly={readOnly}
         />
@@ -155,6 +189,8 @@ function ValueControl({ value, onChange, readOnly, ariaLabel }: ControlProps) {
           value={value == null ? '' : String(value)}
           disabled={readOnly}
           aria-label={ariaLabel}
+          className={changedClass}
+          data-changed={changedAttr}
           onChange={(_e, data) => onChange(data.value)}
         />
       );
@@ -167,10 +203,14 @@ function ObjectFields({
   value,
   onChange,
   readOnly,
+  original,
+  highlight,
 }: {
   value: ExtractedData;
   onChange: (next: ExtractedData) => void;
   readOnly?: boolean;
+  original?: ExtractedData;
+  highlight?: boolean;
 }) {
   const styles = useStyles();
   const entries = Object.entries(value);
@@ -188,6 +228,7 @@ function ObjectFields({
       {entries.map(([key, val]) => {
         const label = prettifyKey(key);
         const kind = inferFieldKind(val);
+        const childOriginal = original?.[key];
 
         // Nested objects and arrays-of-objects get a collapsible section.
         if (kind === 'object' || kind === 'array-of-objects') {
@@ -198,6 +239,8 @@ function ObjectFields({
                 <AccordionPanel>
                   <ValueControl
                     value={val}
+                    originalValue={childOriginal}
+                    highlight={highlight}
                     onChange={(next) => setKey(key, next)}
                     readOnly={readOnly}
                     ariaLabel={label}
@@ -212,6 +255,8 @@ function ObjectFields({
           <Field key={key} label={label} className={styles.fieldRow}>
             <ValueControl
               value={val}
+              originalValue={childOriginal}
+              highlight={highlight}
               onChange={(next) => setKey(key, next)}
               readOnly={readOnly}
               ariaLabel={label}
@@ -229,10 +274,14 @@ function ObjectArrayTable({
   rows,
   onChange,
   readOnly,
+  originalRows,
+  highlight,
 }: {
   rows: Array<Record<string, unknown>>;
   onChange: (next: Array<Record<string, unknown>>) => void;
   readOnly?: boolean;
+  originalRows?: Array<Record<string, unknown>>;
+  highlight?: boolean;
 }) {
   const styles = useStyles();
   const columns = columnsFromRows(rows);
@@ -269,6 +318,8 @@ function ObjectArrayTable({
                   <TableCell key={col}>
                     <ValueControl
                       value={row[col]}
+                      originalValue={originalRows?.[rowIndex]?.[col]}
+                      highlight={highlight}
                       onChange={(next) => setCell(rowIndex, col, next)}
                       readOnly={readOnly}
                       ariaLabel={`${prettifyKey(col)} row ${rowIndex + 1}`}
@@ -308,10 +359,14 @@ function PrimitiveArrayEditor({
   items,
   onChange,
   readOnly,
+  originalItems,
+  highlight,
 }: {
   items: Json[];
   onChange: (next: Json[]) => void;
   readOnly?: boolean;
+  originalItems?: Json[];
+  highlight?: boolean;
 }) {
   const styles = useStyles();
 
@@ -335,6 +390,8 @@ function PrimitiveArrayEditor({
           <div className={styles.arrayItemControl}>
             <ValueControl
               value={item}
+              originalValue={originalItems?.[index]}
+              highlight={highlight}
               onChange={(next) => setItem(index, next)}
               readOnly={readOnly}
               ariaLabel={`Item ${index + 1}`}
@@ -369,13 +426,17 @@ export interface DynamicFieldEditorProps {
   /** Omit (or pass readOnly) to render in read-only mode. */
   onChange?: (next: ExtractedData) => void;
   readOnly?: boolean;
+  /** The agent's original data. When provided (and editable), changed fields highlight green. */
+  original?: ExtractedData;
 }
 
-export function DynamicFieldEditor({ value, onChange, readOnly }: DynamicFieldEditorProps) {
+export function DynamicFieldEditor({ value, onChange, readOnly, original }: DynamicFieldEditorProps) {
   const effectiveReadOnly = readOnly || !onChange;
   return (
     <ObjectFields
       value={value ?? {}}
+      original={original}
+      highlight={!effectiveReadOnly && original !== undefined}
       onChange={(next) => onChange?.(next)}
       readOnly={effectiveReadOnly}
     />

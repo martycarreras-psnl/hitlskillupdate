@@ -1,6 +1,7 @@
-// Review Queue — the actionable list is Flagged AND Processed AND Pending Review (you
-// can't review before the Agent fills in the JSON). Flagged-but-not-yet-processed
-// documents are shown separately as "waiting for processing", not as actionable work.
+// Review Queue — the actionable list is anything that needs a human (per reviewQueue
+// rules): randomly-sampled documents the agent has finished, AND documents that FAILED
+// processing. A reason badge distinguishes the two. Flagged-but-not-yet-processed
+// documents are shown separately as "waiting for processing".
 
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -21,9 +22,9 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { useDocuments } from '@/hooks/useDocuments';
-import { ProcessingStatus, ReviewStatus } from '@/types/domain-models';
-import { ProcessingStatusBadge } from '@/components/StatusBadge';
+import { ProcessingStatusBadge, ReviewReasonBadge } from '@/components/StatusBadge';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
+import { isActionableReview, isAwaitingProcessing, reviewReason } from '@/utils/reviewQueue';
 
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXL },
@@ -37,6 +38,7 @@ const useStyles = makeStyles({
     gap: tokens.spacingHorizontalM,
     padding: tokens.spacingHorizontalM,
   },
+  badgeRight: { display: 'flex', gap: tokens.spacingHorizontalXS, alignItems: 'center' },
 });
 
 export function ReviewQueuePage() {
@@ -45,25 +47,12 @@ export function ReviewQueuePage() {
   const { data: documents, isLoading } = useDocuments();
 
   const actionable = useMemo(
-    () =>
-      (documents ?? []).filter(
-        (doc) =>
-          doc.flaggedForReview &&
-          doc.processingStatus === ProcessingStatus.Processed &&
-          doc.reviewStatus === ReviewStatus.PendingReview,
-      ),
+    () => (documents ?? []).filter(isActionableReview),
     [documents],
   );
 
   const waiting = useMemo(
-    () =>
-      (documents ?? []).filter(
-        (doc) =>
-          doc.flaggedForReview &&
-          doc.processingStatus !== ProcessingStatus.Processed &&
-          (doc.reviewStatus === ReviewStatus.PendingReview ||
-            doc.reviewStatus === ReviewStatus.NotRequired),
-      ),
+    () => (documents ?? []).filter(isAwaitingProcessing),
     [documents],
   );
 
@@ -78,42 +67,49 @@ export function ReviewQueuePage() {
             <EmptyState
               icon="✅"
               title="Nothing to review"
-              description="No flagged, processed documents are pending review right now."
+              description="No randomly-sampled or failed documents are waiting right now."
             />
           ) : (
             <Table aria-label="Review queue">
               <TableHeader>
                 <TableRow>
                   <TableHeaderCell>Name</TableHeaderCell>
+                  <TableHeaderCell>Reason</TableHeaderCell>
                   <TableHeaderCell>Type</TableHeaderCell>
                   <TableHeaderCell>Drawn</TableHeaderCell>
                   <TableHeaderCell />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {actionable.map((doc) => (
-                  <TableRow
-                    key={doc.id}
-                    className={styles.clickableRow}
-                    onClick={() => navigate(`/review/${doc.id}`)}
-                  >
-                    <TableCell>{doc.documentName}</TableCell>
-                    <TableCell>{doc.documentTypeName ?? '—'}</TableCell>
-                    <TableCell>{doc.randomDrawValue ?? '—'}</TableCell>
-                    <TableCell>
-                      <Button
-                        appearance="primary"
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/review/${doc.id}`);
-                        }}
-                      >
-                        Review
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {actionable.map((doc) => {
+                  const reason = reviewReason(doc)!;
+                  return (
+                    <TableRow
+                      key={doc.id}
+                      className={styles.clickableRow}
+                      onClick={() => navigate(`/review/${doc.id}`)}
+                    >
+                      <TableCell>{doc.documentName}</TableCell>
+                      <TableCell>
+                        <ReviewReasonBadge reason={reason} />
+                      </TableCell>
+                      <TableCell>{doc.documentTypeName ?? '—'}</TableCell>
+                      <TableCell>{reason === 'sampled' ? (doc.randomDrawValue ?? '—') : '—'}</TableCell>
+                      <TableCell>
+                        <Button
+                          appearance="primary"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/review/${doc.id}`);
+                          }}
+                        >
+                          Review
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           )}
@@ -128,7 +124,7 @@ export function ReviewQueuePage() {
               {waiting.map((doc) => (
                 <div key={doc.id} className={styles.waitingRow}>
                   <Text>{doc.documentName}</Text>
-                  <div style={{ display: 'flex', gap: tokens.spacingHorizontalXS, alignItems: 'center' }}>
+                  <div className={styles.badgeRight}>
                     <Badge color="warning" appearance="tint">
                       Flagged
                     </Badge>
