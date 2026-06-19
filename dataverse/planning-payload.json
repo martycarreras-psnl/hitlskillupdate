@@ -1,63 +1,356 @@
 {
+  "_meta": {
+    "project": "Document Intake & Human-in-the-Loop Review",
+    "publisherPrefix": "msfthitl",
+    "choiceValuePrefix": "72067",
+    "optionSetValueBase": 720670000,
+    "solutionUniqueName": "HITLSkillUpdate",
+    "solutionDisplayName": "HITL Skill Update",
+    "publisherName": "HITL",
+    "lastUpdatedBy": "planning session 2026-06-18 (prefix locked from .wizard-state.json)",
+    "notes": "Source of truth for schema provisioning. The executing session reads this and drives the Dataverse-skills plugin (dv-metadata, solution='HITLSkillUpdate') + PAC CLI. See docs/build-plan.md for the full sequence. Option-set integer values use the publisher choice-value base 720670000."
+  },
   "domains": [
     {
-      "name": "Project Intake",
-      "description": "Business language and boundaries for the app"
+      "name": "Document Intake",
+      "description": "Upload documents, store the source file and variable extracted JSON, randomly tag a configurable share for human-in-the-loop review, and work the review loop. The app does not process/extract documents — an external Power Automate flow + Agent does."
+    }
+  ],
+  "optionSets": [
+    {
+      "globalOptionSetName": "msfthitl_processingstatus",
+      "displayName": "Processing Status",
+      "description": "Lifecycle that drives the external Power Automate / Agent handoff.",
+      "options": [
+        { "label": "Uploaded", "value": 720670000, "description": "Created in the app; file stored; not yet queued." },
+        { "label": "Queued", "value": 720670001, "description": "App set this on submit. The external flow watches for this value." },
+        { "label": "Processing", "value": 720670002, "description": "Agent is extracting; set by the flow." },
+        { "label": "Processed", "value": 720670003, "description": "Extracted Data + Document Type written back by the Agent." },
+        { "label": "Failed", "value": 720670004, "description": "Extraction failed; Processing Error populated. May be re-queued." }
+      ]
+    },
+    {
+      "globalOptionSetName": "msfthitl_reviewstatus",
+      "displayName": "Review Status",
+      "description": "Human-in-the-loop review loop state.",
+      "options": [
+        { "label": "Not Required", "value": 720670000, "description": "Random Draw did not match Trigger Value." },
+        { "label": "Pending Review", "value": 720670001, "description": "Flagged and waiting for a reviewer." },
+        { "label": "In Review", "value": 720670002, "description": "A reviewer has opened it." },
+        { "label": "Approved", "value": 720670003, "description": "Reviewer approved the extracted data." },
+        { "label": "Rejected", "value": 720670004, "description": "Reviewer rejected; comment required." }
+      ]
+    },
+    {
+      "globalOptionSetName": "msfthitl_skillupdatestatus",
+      "displayName": "Skill Update Status",
+      "description": "Processing lifecycle of a Skill Update Request — a reviewer's suggested improvement to the agent skill, raised when a Document is rejected.",
+      "options": [
+        { "label": "New", "value": 720670000, "description": "Raised by a reviewer on rejection; not yet triaged." },
+        { "label": "In Progress", "value": 720670001, "description": "A skill owner is implementing the suggested fix." },
+        { "label": "Completed", "value": 720670002, "description": "The suggested fix has been applied to the agent skill." },
+        { "label": "Dismissed", "value": 720670003, "description": "Reviewed and judged not actionable." }
+      ]
     }
   ],
   "tables": [
     {
-      "schemaName": "yourprefix_ProjectRequest",
-      "displayName": "Project Request",
-      "displayCollectionName": "Project Requests",
-      "logicalSingularName": "yourprefix_projectrequest",
-      "logicalPluralName": "yourprefix_projectrequests",
-      "entitySetName": "yourprefix_projectrequests",
-      "tableLogicalName": "yourprefix_projectrequests",
-      "description": "Tracks incoming requests for work",
+      "schemaName": "msfthitl_Document",
+      "displayName": "Document",
+      "displayCollectionName": "Documents",
+      "logicalSingularName": "msfthitl_document",
+      "logicalPluralName": "msfthitl_documents",
+      "entitySetName": "msfthitl_documents",
+      "tableLogicalName": "msfthitl_documents",
+      "description": "An uploaded document (receipt, invoice, etc.) with its source file, extracted JSON, processing status, random review draw, and review state.",
       "ownership": "UserOwned",
       "ownershipType": "UserOwned",
       "isActivity": false,
       "hasActivities": false,
       "hasNotes": true,
       "primaryName": {
-        "schemaName": "yourprefix_ProjectRequestName",
-        "displayName": "Name",
-        "description": "Primary name for the request",
+        "schemaName": "msfthitl_DocumentName",
+        "displayName": "Document Name",
+        "description": "Display name for the document; defaults to the uploaded file name.",
+        "maxLength": 400
+      },
+      "columns": [
+        {
+          "schemaName": "msfthitl_sourcefile",
+          "displayName": "Source File",
+          "logicalName": "msfthitl_sourcefile",
+          "type": "File",
+          "requiredLevel": "ApplicationRequired",
+          "maxSizeInKB": 32768,
+          "description": "The original uploaded binary (PDF/JPG/PNG). Rendered back to the user on the record. Cap ~32MB; File columns support up to ~128MB if needed."
+        },
+        {
+          "schemaName": "msfthitl_documenttypeid",
+          "displayName": "Document Type",
+          "logicalName": "msfthitl_documenttypeid",
+          "type": "Lookup",
+          "targetTable": "msfthitl_documenttypes",
+          "requiredLevel": "None",
+          "description": "Set by the Agent after classification; empty at upload."
+        },
+        {
+          "schemaName": "msfthitl_processingstatus",
+          "displayName": "Processing Status",
+          "logicalName": "msfthitl_processingstatus",
+          "type": "Picklist",
+          "globalOptionSetName": "msfthitl_processingstatus",
+          "requiredLevel": "ApplicationRequired",
+          "defaultValue": 720670000,
+          "description": "App sets Queued on submit; external flow advances the rest."
+        },
+        {
+          "schemaName": "msfthitl_extracteddata",
+          "displayName": "Extracted Data",
+          "logicalName": "msfthitl_extracteddata",
+          "type": "Memo",
+          "format": "TextArea",
+          "maxLength": 1048576,
+          "requiredLevel": "None",
+          "description": "Variable JSON written by the Agent and edited by reviewers via generated controls. Never shown as raw JSON in the UI."
+        },
+        {
+          "schemaName": "msfthitl_randomdrawvalue",
+          "displayName": "Random Draw Value",
+          "logicalName": "msfthitl_randomdrawvalue",
+          "type": "Integer",
+          "requiredLevel": "None",
+          "description": "The integer the app drew at record creation. Captured for transparency/audit."
+        },
+        {
+          "schemaName": "msfthitl_flaggedforreview",
+          "displayName": "Flagged For Review",
+          "logicalName": "msfthitl_flaggedforreview",
+          "type": "Boolean",
+          "requiredLevel": "None",
+          "defaultValue": false,
+          "description": "True when Random Draw Value equals the configured Trigger Value."
+        },
+        {
+          "schemaName": "msfthitl_reviewstatus",
+          "displayName": "Review Status",
+          "logicalName": "msfthitl_reviewstatus",
+          "type": "Picklist",
+          "globalOptionSetName": "msfthitl_reviewstatus",
+          "requiredLevel": "None",
+          "defaultValue": 720670000,
+          "description": "Review loop state. Set to Pending Review when flagged; otherwise Not Required."
+        },
+        {
+          "schemaName": "msfthitl_reviewcomment",
+          "displayName": "Review Comment",
+          "logicalName": "msfthitl_reviewcomment",
+          "type": "Memo",
+          "format": "TextArea",
+          "maxLength": 4000,
+          "requiredLevel": "None",
+          "description": "Reviewer's note; required on Reject (enforced client-side)."
+        },
+        {
+          "schemaName": "msfthitl_processingerror",
+          "displayName": "Processing Error",
+          "logicalName": "msfthitl_processingerror",
+          "type": "Memo",
+          "format": "TextArea",
+          "maxLength": 4000,
+          "requiredLevel": "None",
+          "description": "Populated by the flow when Processing Status = Failed."
+        },
+        {
+          "schemaName": "msfthitl_processedon",
+          "displayName": "Processed On",
+          "logicalName": "msfthitl_processedon",
+          "type": "DateTime",
+          "format": "DateAndTime",
+          "requiredLevel": "None",
+          "description": "When the Agent finished processing."
+        },
+        {
+          "schemaName": "msfthitl_reviewedon",
+          "displayName": "Reviewed On",
+          "logicalName": "msfthitl_reviewedon",
+          "type": "DateTime",
+          "format": "DateAndTime",
+          "requiredLevel": "None",
+          "description": "When a reviewer approved/rejected."
+        }
+      ]
+    },
+    {
+      "schemaName": "msfthitl_DocumentType",
+      "displayName": "Document Type",
+      "displayCollectionName": "Document Types",
+      "logicalSingularName": "msfthitl_documenttype",
+      "logicalPluralName": "msfthitl_documenttypes",
+      "entitySetName": "msfthitl_documenttypes",
+      "tableLogicalName": "msfthitl_documenttypes",
+      "description": "Admin-managed catalog of document categories (Receipt, Invoice, ...). Extensible without a code change.",
+      "ownership": "UserOwned",
+      "ownershipType": "UserOwned",
+      "isActivity": false,
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msfthitl_DocumentTypeName",
+        "displayName": "Type Name",
+        "description": "Display name of the document type (e.g. Receipt, Invoice).",
         "maxLength": 100
       },
       "columns": [
         {
-          "schemaName": "yourprefix_requeststatus",
-          "displayName": "Request Status",
-          "logicalName": "yourprefix_requeststatus",
-          "type": "Picklist",
-          "globalOptionSetName": "yourprefix_requeststatus",
-          "requiredLevel": "ApplicationRequired"
+          "schemaName": "msfthitl_description",
+          "displayName": "Description",
+          "logicalName": "msfthitl_description",
+          "type": "Memo",
+          "format": "TextArea",
+          "maxLength": 2000,
+          "requiredLevel": "None",
+          "description": "Optional human-readable description / hint for the Agent."
         },
         {
-          "schemaName": "yourprefix_requestedon",
-          "displayName": "Requested On",
-          "logicalName": "yourprefix_requestedon",
-          "type": "DateTime",
-          "format": "DateOnly",
-          "requiredLevel": "None"
+          "schemaName": "msfthitl_isactive",
+          "displayName": "Is Active",
+          "logicalName": "msfthitl_isactive",
+          "type": "Boolean",
+          "requiredLevel": "None",
+          "defaultValue": true,
+          "description": "Whether this type is selectable / in use."
         }
-      ],
-      "attributes": [
+      ]
+    },
+    {
+      "schemaName": "msfthitl_ReviewSettings",
+      "displayName": "Review Settings",
+      "displayCollectionName": "Review Settings",
+      "logicalSingularName": "msfthitl_reviewsetting",
+      "logicalPluralName": "msfthitl_reviewsettings",
+      "entitySetName": "msfthitl_reviewsettings",
+      "tableLogicalName": "msfthitl_reviewsettings",
+      "description": "Single-row configuration for the random review draw. Edited by an Admin in-app at runtime.",
+      "ownership": "UserOwned",
+      "ownershipType": "UserOwned",
+      "isActivity": false,
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msfthitl_ReviewSettingsName",
+        "displayName": "Name",
+        "description": "Label for the settings row (e.g. 'Default').",
+        "maxLength": 100
+      },
+      "columns": [
         {
-          "schemaName": "yourprefix_requeststatus",
-          "displayName": "Request Status",
-          "type": "Picklist",
-          "globalOptionSetName": "yourprefix_requeststatus",
-          "requiredLevel": "ApplicationRequired"
+          "schemaName": "msfthitl_rangemin",
+          "displayName": "Range Min",
+          "logicalName": "msfthitl_rangemin",
+          "type": "Integer",
+          "requiredLevel": "ApplicationRequired",
+          "defaultValue": 1,
+          "minValue": 1,
+          "description": "Inclusive lower bound of the random draw range."
         },
         {
-          "schemaName": "yourprefix_requestedon",
+          "schemaName": "msfthitl_rangemax",
+          "displayName": "Range Max",
+          "logicalName": "msfthitl_rangemax",
+          "type": "Integer",
+          "requiredLevel": "ApplicationRequired",
+          "defaultValue": 20,
+          "minValue": 1,
+          "description": "Inclusive upper bound of the random draw range (e.g. 20)."
+        },
+        {
+          "schemaName": "msfthitl_triggervalue",
+          "displayName": "Trigger Value",
+          "logicalName": "msfthitl_triggervalue",
+          "type": "Integer",
+          "requiredLevel": "ApplicationRequired",
+          "defaultValue": 7,
+          "minValue": 1,
+          "description": "When a Document's Random Draw equals this, it is flagged for review (e.g. 7). Must fall within [Range Min, Range Max]."
+        }
+      ]
+    },
+    {
+      "schemaName": "msfthitl_SkillUpdateRequest",
+      "displayName": "Skill Update Request",
+      "displayCollectionName": "Skill Update Requests",
+      "logicalSingularName": "msfthitl_skillupdaterequest",
+      "logicalPluralName": "msfthitl_skillupdaterequests",
+      "entitySetName": "msfthitl_skillupdaterequests",
+      "tableLogicalName": "msfthitl_skillupdaterequests",
+      "description": "A reviewer's suggested improvement to the agent skill, raised when a Document is rejected. Captures what should change in the underlying agent skill and tracks its processing status.",
+      "ownership": "UserOwned",
+      "ownershipType": "UserOwned",
+      "isActivity": false,
+      "hasActivities": false,
+      "hasNotes": false,
+      "primaryName": {
+        "schemaName": "msfthitl_SkillUpdateRequestName",
+        "displayName": "Name",
+        "description": "Display name; defaults to 'Skill update for <document name>'.",
+        "maxLength": 400
+      },
+      "columns": [
+        {
+          "schemaName": "msfthitl_documentid",
+          "displayName": "Document",
+          "logicalName": "msfthitl_documentid",
+          "type": "Lookup",
+          "targetTable": "msfthitl_documents",
+          "requiredLevel": "ApplicationRequired",
+          "description": "The rejected Document that triggered this skill-update request."
+        },
+        {
+          "schemaName": "msfthitl_documenttypename",
+          "displayName": "Document Type",
+          "logicalName": "msfthitl_documenttypename",
+          "type": "String",
+          "maxLength": 100,
+          "requiredLevel": "None",
+          "description": "Denormalized Document Type name captured at request time, for grouping/reporting without a second lookup."
+        },
+        {
+          "schemaName": "msfthitl_suggestedfix",
+          "displayName": "Suggested Fix",
+          "logicalName": "msfthitl_suggestedfix",
+          "type": "Memo",
+          "format": "TextArea",
+          "maxLength": 4000,
+          "requiredLevel": "ApplicationRequired",
+          "description": "The reviewer's description of what should be improved in the underlying agent skill (entered in the rejection dialog)."
+        },
+        {
+          "schemaName": "msfthitl_skillupdatestatus",
+          "displayName": "Skill Update Status",
+          "logicalName": "msfthitl_skillupdatestatus",
+          "type": "Picklist",
+          "globalOptionSetName": "msfthitl_skillupdatestatus",
+          "requiredLevel": "ApplicationRequired",
+          "defaultValue": 720670000,
+          "description": "Processing lifecycle: New -> In Progress -> Completed / Dismissed."
+        },
+        {
+          "schemaName": "msfthitl_requestedon",
           "displayName": "Requested On",
+          "logicalName": "msfthitl_requestedon",
           "type": "DateTime",
-          "format": "DateOnly",
-          "requiredLevel": "None"
+          "format": "DateAndTime",
+          "requiredLevel": "None",
+          "description": "When the reviewer raised the request (on rejection)."
+        },
+        {
+          "schemaName": "msfthitl_resolvedon",
+          "displayName": "Resolved On",
+          "logicalName": "msfthitl_resolvedon",
+          "type": "DateTime",
+          "format": "DateAndTime",
+          "requiredLevel": "None",
+          "description": "When the request reached Completed or Dismissed."
         }
       ]
     }
@@ -65,23 +358,59 @@
   "relationships": [
     {
       "type": "ManyToOne",
-      "fromTable": "yourprefix_projectrequests",
-      "toTable": "yourprefix_departments",
-      "referencingEntity": "yourprefix_projectrequests",
-      "referencedEntity": "yourprefix_departments",
-      "schemaName": "yourprefix_ProjectRequest_Department",
-      "lookupSchemaName": "yourprefix_DepartmentId",
-      "lookupDisplayName": "Department"
+      "fromTable": "msfthitl_documents",
+      "toTable": "msfthitl_documenttypes",
+      "referencingEntity": "msfthitl_documents",
+      "referencedEntity": "msfthitl_documenttypes",
+      "schemaName": "msfthitl_Document_DocumentType",
+      "lookupSchemaName": "msfthitl_documenttypeid",
+      "lookupDisplayName": "Document Type"
+    },
+    {
+      "type": "ManyToOne",
+      "fromTable": "msfthitl_skillupdaterequests",
+      "toTable": "msfthitl_documents",
+      "referencingEntity": "msfthitl_skillupdaterequests",
+      "referencedEntity": "msfthitl_documents",
+      "schemaName": "msfthitl_SkillUpdateRequest_Document",
+      "lookupSchemaName": "msfthitl_documentid",
+      "lookupDisplayName": "Document"
+    }
+  ],
+  "seedData": {
+    "msfthitl_documenttypes": [
+      { "msfthitl_documenttypename": "Receipt", "msfthitl_description": "Expense receipt", "msfthitl_isactive": true },
+      { "msfthitl_documenttypename": "Invoice", "msfthitl_description": "Supplier invoice", "msfthitl_isactive": true }
+    ],
+    "msfthitl_reviewsettings": [
+      { "msfthitl_reviewsettingsname": "Default", "msfthitl_rangemin": 1, "msfthitl_rangemax": 20, "msfthitl_triggervalue": 7 }
+    ]
+  },
+  "securityRoles": [
+    {
+      "name": "Document Intake Uploader",
+      "description": "Creates documents and sees their own; read-only on Review Settings and Document Types.",
+      "privileges": "Create/Read/Write own Document; Read Document Type; Read Review Settings."
+    },
+    {
+      "name": "Document Intake Reviewer",
+      "description": "Works the review queue: read all Documents, edit Extracted Data / Review fields, approve/reject, and raise Skill Update Requests.",
+      "privileges": "Read/Write Document (org or BU depth per Dataverse security modeling); Create/Read/Write Skill Update Request; Read Document Type; Read Review Settings."
+    },
+    {
+      "name": "Document Intake Admin",
+      "description": "Full control plus manages Document Types, Review Settings, and Skill Update Requests.",
+      "privileges": "Full Document; Create/Read/Write/Delete Document Type, Review Settings, and Skill Update Request."
     }
   ],
   "provisioningPlansJson": [
     {
       "path": "dataverse/provision-tables.plan.json",
-      "purpose": "Create or update tables and columns after review"
+      "purpose": "Create or update tables, columns, and option sets after review"
     },
     {
       "path": "dataverse/provision-relationships.plan.json",
-      "purpose": "Apply relationship changes after table provisioning"
+      "purpose": "Apply the Document -> Document Type lookup relationship after table provisioning"
     },
     {
       "path": "dataverse/register-datasources.plan.json",
@@ -89,32 +418,10 @@
     }
   ],
   "orgStructure": {
-    "businessUnits": [
-      { "name": "Field Operations", "parentName": null },
-      { "name": "West Region", "parentName": "Field Operations" }
-    ],
-    "securityGroups": [
-      {
-        "displayName": "Field Operations - West",
-        "mailNickname": "field-ops-west",
-        "entraObjectId": null
-      }
-    ],
-    "teams": [
-      {
-        "name": "Field Operations - West",
-        "businessUnitName": "West Region",
-        "teamType": "Owner",
-        "membershipSource": "EntraGroup",
-        "securityGroupDisplayName": "Field Operations - West"
-      }
-    ],
-    "roleMappings": [
-      {
-        "teamName": "Field Operations - West",
-        "roleName": "Project Tracker Collaborator",
-        "scope": "BusinessUnit"
-      }
-    ]
+    "_note": "Intentionally empty. Decision: all tables User/Team owned, no organization-owned tables. Authorization and data scope are delegated entirely to Dataverse security-role modeling (see securityRoles). Do NOT custom-model business units, owner teams, or Entra groups for this app.",
+    "businessUnits": [],
+    "securityGroups": [],
+    "teams": [],
+    "roleMappings": []
   }
 }

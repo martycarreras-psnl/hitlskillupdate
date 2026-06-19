@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '../tests/setup/test-utils';
+import { render, screen } from '../tests/setup/test-utils';
 import { App } from './App';
 
 describe('App — smoke tests', () => {
@@ -8,39 +8,26 @@ describe('App — smoke tests', () => {
     expect(container).toBeTruthy();
   });
 
-  it('displays the app title', () => {
+  it('shows the app title as the h1', () => {
     render(<App />);
     expect(screen.getByRole('heading', { level: 1 })).toBeTruthy();
+    expect(screen.getByText(/Document Intake/i)).toBeTruthy();
   });
 
-  it('shows the celebratory launch screen', () => {
+  it('renders the navigation rail', () => {
     render(<App />);
-    expect(screen.getByText(/is live!/i)).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Dashboard/i })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Documents/i })).toBeTruthy();
   });
 
-  it('shows the path selection question', () => {
+  it('shows the Admin Settings tab for the default Admin role', () => {
     render(<App />);
-    expect(screen.getByText(/What are you building/i)).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Admin Settings/i })).toBeTruthy();
   });
 
-  it('navigates to new-tables steps when first card is clicked', () => {
-    render(<App />);
-    fireEvent.click(screen.getByText('A brand new app'));
-    expect(screen.getByText('Building something new')).toBeTruthy();
-    expect(screen.getByText('Describe your business problem')).toBeTruthy();
-  });
-
-  it('navigates to existing-tables steps when second card is clicked', () => {
-    render(<App />);
-    fireEvent.click(screen.getByText('An app on existing data'));
-    expect(screen.getByText('Building on existing data')).toBeTruthy();
-    expect(screen.getByText('Discover your existing schema')).toBeTruthy();
-  });
-
-  it('returns to the choice screen when Back is clicked', () => {
-    render(<App />);
-    fireEvent.click(screen.getByText('A brand new app'));
-    fireEvent.click(screen.getByText('Back'));
-    expect(screen.getByText(/What are you building/i)).toBeTruthy();
+  it('loads seeded documents on the Documents screen', async () => {
+    render(<App />, { initialRoute: '/documents' });
+    expect(await screen.findByText('northwind-invoice-00841.pdf')).toBeTruthy();
   });
 });
+

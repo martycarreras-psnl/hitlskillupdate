@@ -3,8 +3,17 @@ import type { AppDataProvider } from '@/services/data-contracts';
 import { createMockDataProvider } from '@/services/mock-data-provider';
 import { createRealDataProvider } from '@/services/real-data-provider';
 
+// A single shared provider instance per session. The mock provider holds mutable
+// in-memory state, so every hook MUST read/write the same instance — never call the
+// create* functions directly. Phase 2 defaults to mock; set VITE_USE_MOCK=false to
+// switch to the real Dataverse provider once connectors are bound (Phase 4).
+let cachedProvider: AppDataProvider | null = null;
+
 export function createAppDataProvider(): AppDataProvider {
-  return import.meta.env.VITE_USE_MOCK === 'true'
-    ? createMockDataProvider()
-    : createRealDataProvider();
+  if (cachedProvider) return cachedProvider;
+  cachedProvider =
+    import.meta.env.VITE_USE_MOCK === 'false'
+      ? createRealDataProvider()
+      : createMockDataProvider();
+  return cachedProvider;
 }
