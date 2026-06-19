@@ -13,6 +13,7 @@ import {
 import { Open16Regular } from '@fluentui/react-icons';
 import { useSourceFileUrl } from '@/hooks/useDocuments';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
+import { PdfCanvasViewer } from '@/components/PdfCanvasViewer';
 
 const useStyles = makeStyles({
   card: {
@@ -31,13 +32,6 @@ const useStyles = makeStyles({
     width: '100%',
     maxHeight: '520px',
     objectFit: 'contain',
-    borderRadius: tokens.borderRadiusMedium,
-    backgroundColor: tokens.colorNeutralBackground2,
-  },
-  pdf: {
-    width: '100%',
-    height: '520px',
-    border: 'none',
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground2,
   },
@@ -86,11 +80,8 @@ export function SourceFileViewer({ documentId }: { documentId: string }) {
         <img className={styles.image} src={data.url} alt={data.fileName} />
       ) : isPdf ? (
         <>
-          <iframe className={styles.pdf} src={data.url} title={data.fileName} />
+          <PdfCanvasViewer url={data.url} fileName={data.fileName} />
           <div className={styles.fallback}>
-            <Text size={200}>
-              Can’t see the PDF above? Some hosts block inline preview.
-            </Text>
             <Link href={data.url} download={data.fileName}>
               Download {data.fileName}
             </Link>
