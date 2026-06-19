@@ -307,6 +307,16 @@
       },
       "columns": [
         {
+          "schemaName": "msfthitl_SkillUpdateNumber",
+          "displayName": "Skill Update Number",
+          "logicalName": "msfthitl_skillupdatenumber",
+          "type": "AutoNumber",
+          "autoNumberFormat": "SUR-{DATETIMEUTC:yyyy}-{SEQNUM:5}",
+          "maxLength": 100,
+          "requiredLevel": "None",
+          "description": "Friendly, system-generated unique identifier (e.g. SUR-2026-00001). Immutable; assigned by Dataverse on create. Lets people refer to a skill-update request by a short number."
+        },
+        {
           "schemaName": "msfthitl_documentid",
           "displayName": "Document",
           "logicalName": "msfthitl_documentid",

@@ -292,6 +292,10 @@ function createReviewSettingsRepository(): ReviewSettingsRepository {
 function toSkillUpdateRequest(rec: Msfthitl_skillupdaterequests): SkillUpdateRequest {
   return {
     id: rec.msfthitl_skillupdaterequestid,
+    // Friendly autonumber; not on the generated type until the column is provisioned,
+    // so read it defensively from the record JSON. msfthitl_skillupdatenumber.
+    skillUpdateNumber:
+      (rec as { msfthitl_skillupdatenumber?: string }).msfthitl_skillupdatenumber ?? undefined,
     name: rec.msfthitl_skillupdaterequestname,
     documentId: rec._msfthitl_documentid_value ?? '',
     documentName: rec.msfthitl_documentidname ?? undefined,

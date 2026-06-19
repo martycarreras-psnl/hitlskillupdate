@@ -163,6 +163,7 @@ export const seedDocuments: DocumentRecord[] = [
 export const seedSkillUpdateRequests: SkillUpdateRequest[] = [
   {
     id: 'sur-2001',
+    skillUpdateNumber: 'SUR-2026-00001',
     name: 'Skill update for handwritten-receipt.jpg',
     documentId: 'doc-1003',
     documentName: 'office-supplies-receipt.jpg',
@@ -174,6 +175,7 @@ export const seedSkillUpdateRequests: SkillUpdateRequest[] = [
   },
   {
     id: 'sur-2002',
+    skillUpdateNumber: 'SUR-2026-00002',
     name: 'Skill update for old-invoice-format.pdf',
     documentId: 'doc-1002',
     documentName: 'northwind-invoice-00841.pdf',
@@ -185,6 +187,7 @@ export const seedSkillUpdateRequests: SkillUpdateRequest[] = [
   },
   {
     id: 'sur-2003',
+    skillUpdateNumber: 'SUR-2026-00003',
     name: 'Skill update for fuel-receipt.jpg',
     documentId: 'doc-1003',
     documentName: 'office-supplies-receipt.jpg',

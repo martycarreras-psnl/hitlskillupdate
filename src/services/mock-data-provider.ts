@@ -166,8 +166,14 @@ function createSkillUpdateRequestRepository(store: MockStore): SkillUpdateReques
       return delay(record ? clone(record) : null);
     },
     async create(input: CreateSkillUpdateRequestInput) {
+      // Mimic the Dataverse autonumber (SUR-{yyyy}-{SEQNUM:5}) so the prototype shows
+      // a friendly identifier on freshly raised requests too.
+      const year = new Date().getFullYear();
+      const seq = store.skillUpdateRequests.length + 1;
+      const skillUpdateNumber = `SUR-${year}-${String(seq).padStart(5, '0')}`;
       const record: SkillUpdateRequest = {
         id: `sur-${crypto.randomUUID()}`,
+        skillUpdateNumber,
         name: `Skill update for ${input.documentName ?? input.documentId}`,
         documentId: input.documentId,
         documentName: input.documentName,

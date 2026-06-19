@@ -90,6 +90,8 @@ export interface DocumentRecord {
  */
 export interface SkillUpdateRequest {
   id: string;
+  /** Friendly autonumber assigned by Dataverse on create (e.g. SUR-2026-00001). */
+  skillUpdateNumber?: string;
   name: string;
   documentId: string;
   documentName?: string;

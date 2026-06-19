@@ -43,6 +43,7 @@ const useStyles = makeStyles({
   },
   filters: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
   fix: { color: tokens.colorNeutralForeground2 },
+  number: { fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' },
   docLink: { cursor: 'pointer' },
 });
 
@@ -114,6 +115,7 @@ export function SkillUpdatesPage() {
           <Table aria-label="Skill update requests">
             <TableHeader>
               <TableRow>
+                <TableHeaderCell>Number</TableHeaderCell>
                 <TableHeaderCell>Suggested Fix</TableHeaderCell>
                 <TableHeaderCell>Document</TableHeaderCell>
                 <TableHeaderCell>Type</TableHeaderCell>
@@ -125,6 +127,9 @@ export function SkillUpdatesPage() {
             <TableBody>
               {filtered.map((req) => (
                 <TableRow key={req.id}>
+                  <TableCell>
+                    <span className={styles.number}>{req.skillUpdateNumber ?? '—'}</span>
+                  </TableCell>
                   <TableCell>
                     <TableCellLayout truncate>
                       <Text className={styles.fix}>{req.suggestedFix}</Text>
