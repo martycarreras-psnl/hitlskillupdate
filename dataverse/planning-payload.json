@@ -76,6 +76,16 @@
       },
       "columns": [
         {
+          "schemaName": "msfthitl_DocumentNumber",
+          "displayName": "Document Number",
+          "logicalName": "msfthitl_documentnumber",
+          "type": "AutoNumber",
+          "autoNumberFormat": "DOC-{DATETIMEUTC:yyyy}-{SEQNUM:5}",
+          "maxLength": 100,
+          "requiredLevel": "None",
+          "description": "Friendly, system-generated unique identifier (e.g. DOC-2026-00001). Immutable; assigned by Dataverse on create. Downstream agents reference the record by this value."
+        },
+        {
           "schemaName": "msfthitl_sourcefile",
           "displayName": "Source File",
           "logicalName": "msfthitl_sourcefile",

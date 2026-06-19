@@ -59,6 +59,12 @@ export interface ReviewSettings {
 /** An uploaded document and everything the system knows about it. */
 export interface DocumentRecord {
   id: string;
+  /**
+   * Friendly, system-generated unique identifier (e.g. DOC-2026-00001). Assigned by
+   * Dataverse (autonumber column msfthitl_documentnumber) on create; immutable. Used
+   * to reference the record from downstream agents/flows. Absent until the row is saved.
+   */
+  documentNumber?: string;
   documentName: string;
   sourceFileName?: string;
   sourceFileMimeType?: string;

@@ -82,8 +82,14 @@ function createDocumentRepository(store: MockStore): DocumentRepository {
       return delay(record ? clone(record) : null);
     },
     async create(input: CreateDocumentInput) {
+      // Mimic the Dataverse autonumber (DOC-{yyyy}-{SEQNUM:5}) so the prototype
+      // shows a friendly identifier on freshly uploaded documents too.
+      const year = new Date().getFullYear();
+      const seq = store.documents.length + 1;
+      const documentNumber = `DOC-${year}-${String(seq).padStart(5, '0')}`;
       const record: DocumentRecord = {
         id: `doc-${crypto.randomUUID()}`,
+        documentNumber,
         documentName: input.documentName,
         sourceFileName: input.sourceFileName,
         sourceFileMimeType: input.sourceFileMimeType,

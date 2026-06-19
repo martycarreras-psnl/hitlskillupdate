@@ -92,6 +92,10 @@ function mimeFromName(fileName: string | undefined): string {
 function toDocument(rec: Msfthitl_documents): DocumentRecord {
   return {
     id: rec.msfthitl_documentid,
+    // Autonumber column added after the model was generated; read it via a narrow
+    // cast (Dataverse returns it in the record JSON). msfthitl_documentnumber.
+    documentNumber:
+      (rec as { msfthitl_documentnumber?: string }).msfthitl_documentnumber ?? undefined,
     documentName: rec.msfthitl_documentname,
     sourceFileName: rec.msfthitl_sourcefile_name ?? rec.msfthitl_sourcefile ?? undefined,
     sourceFileMimeType: rec.msfthitl_sourcefile_name

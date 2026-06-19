@@ -62,6 +62,7 @@ const invoiceExtract = {
 export const seedDocuments: DocumentRecord[] = [
   {
     id: 'doc-1001',
+    documentNumber: 'DOC-2026-00001',
     documentName: 'bluebottle-receipt-0304.jpg',
     sourceFileName: 'bluebottle-receipt-0304.jpg',
     sourceFileMimeType: 'image/svg+xml',
@@ -77,6 +78,7 @@ export const seedDocuments: DocumentRecord[] = [
   },
   {
     id: 'doc-1002',
+    documentNumber: 'DOC-2026-00002',
     documentName: 'northwind-invoice-00841.pdf',
     sourceFileName: 'northwind-invoice-00841.pdf',
     sourceFileMimeType: 'application/pdf',
@@ -92,6 +94,7 @@ export const seedDocuments: DocumentRecord[] = [
   },
   {
     id: 'doc-1003',
+    documentNumber: 'DOC-2026-00003',
     documentName: 'office-supplies-receipt.jpg',
     sourceFileName: 'office-supplies-receipt.jpg',
     sourceFileMimeType: 'image/svg+xml',
@@ -118,6 +121,7 @@ export const seedDocuments: DocumentRecord[] = [
   },
   {
     id: 'doc-1004',
+    documentNumber: 'DOC-2026-00004',
     documentName: 'pending-upload.pdf',
     sourceFileName: 'pending-upload.pdf',
     sourceFileMimeType: 'application/pdf',
@@ -129,6 +133,7 @@ export const seedDocuments: DocumentRecord[] = [
   },
   {
     id: 'doc-1005',
+    documentNumber: 'DOC-2026-00005',
     documentName: 'blurry-scan.jpg',
     sourceFileName: 'blurry-scan.jpg',
     sourceFileMimeType: 'image/svg+xml',
@@ -141,6 +146,7 @@ export const seedDocuments: DocumentRecord[] = [
   },
   {
     id: 'doc-1006',
+    documentNumber: 'DOC-2026-00006',
     documentName: 'taxi-receipt-flagged.jpg',
     sourceFileName: 'taxi-receipt-flagged.jpg',
     sourceFileMimeType: 'image/svg+xml',

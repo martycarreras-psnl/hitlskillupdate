@@ -215,6 +215,13 @@ def column_body(col):
         return {"@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
                 "MaxLength": col.get("maxLength", 100),
                 "FormatName": {"Value": "Text"}, **common}
+    if t == "AutoNumber":
+        # Autonumber is a String column with an AutoNumberFormat. Dataverse
+        # generates the value on create; the app never writes it (RequiredLevel None).
+        return {"@odata.type": "Microsoft.Dynamics.CRM.StringAttributeMetadata",
+                "MaxLength": col.get("maxLength", 100),
+                "FormatName": {"Value": "Text"},
+                "AutoNumberFormat": col["autoNumberFormat"], **common}
     if t == "Picklist":
         mid = optionset_metadata_id(col["globalOptionSetName"])
         return {"@odata.type": "Microsoft.Dynamics.CRM.PicklistAttributeMetadata",

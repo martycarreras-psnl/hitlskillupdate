@@ -65,6 +65,7 @@ const useStyles = makeStyles({
     flexWrap: 'wrap',
   },
   nameCell: { display: 'flex', flexDirection: 'column' },
+  docNumber: { fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' },
   clickableRow: { cursor: 'pointer' },
   badges: { display: 'flex', gap: tokens.spacingHorizontalXS, alignItems: 'center' },
 });
@@ -91,7 +92,12 @@ export function DocumentsPage() {
     return (documents ?? []).filter((doc) => {
       if (statusFilter !== 'all' && doc.processingStatus !== statusFilter) return false;
       if (flaggedOnly && !doc.flaggedForReview) return false;
-      if (search.trim() && !doc.documentName.toLowerCase().includes(search.trim().toLowerCase())) {
+      const q = search.trim().toLowerCase();
+      if (
+        q &&
+        !doc.documentName.toLowerCase().includes(q) &&
+        !(doc.documentNumber ?? '').toLowerCase().includes(q)
+      ) {
         return false;
       }
       return true;
@@ -185,7 +191,7 @@ export function DocumentsPage() {
           onChange={(_e, data) => setFlaggedOnly(Boolean(data.checked))}
         />
         <Input
-          placeholder="Search by name…"
+          placeholder="Search by name or document #…"
           value={search}
           onChange={(_e, data) => setSearch(data.value)}
         />
@@ -204,6 +210,7 @@ export function DocumentsPage() {
           <Table aria-label="Documents">
             <TableHeader>
               <TableRow>
+                <TableHeaderCell>Document #</TableHeaderCell>
                 <TableHeaderCell>Name</TableHeaderCell>
                 <TableHeaderCell>Type</TableHeaderCell>
                 <TableHeaderCell>Processing</TableHeaderCell>
@@ -219,6 +226,9 @@ export function DocumentsPage() {
                   className={styles.clickableRow}
                   onClick={() => navigate(`/documents/${doc.id}`)}
                 >
+                  <TableCell>
+                    <span className={styles.docNumber}>{doc.documentNumber ?? '—'}</span>
+                  </TableCell>
                   <TableCell>
                     <div className={styles.nameCell}>
                       <span>{doc.documentName}</span>

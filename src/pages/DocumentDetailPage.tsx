@@ -31,6 +31,7 @@ import {
   Toast,
   ToastTitle,
   Toaster,
+  Tooltip,
   makeStyles,
   tokens,
   useId,
@@ -40,6 +41,7 @@ import {
   ArrowLeft24Regular,
   ArrowClockwise24Regular,
   ChevronDown24Regular,
+  Copy16Regular,
   Delete24Regular,
 } from '@fluentui/react-icons';
 import { useDocument, useUpdateDocument, useDeleteDocument } from '@/hooks/useDocuments';
@@ -61,6 +63,8 @@ const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
   topRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
   titleGroup: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS },
+  docNumberRow: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS },
+  docNumber: { fontFamily: tokens.fontFamilyMonospace, color: tokens.colorNeutralForeground2 },
   badges: { display: 'flex', gap: tokens.spacingHorizontalXS, alignItems: 'center', flexWrap: 'wrap' },
   grid: {
     display: 'grid',
@@ -132,6 +136,21 @@ export function DocumentDetailPage() {
     );
   }
 
+  async function copyDocumentNumber() {
+    if (!doc?.documentNumber) return;
+    try {
+      await navigator.clipboard.writeText(doc.documentNumber);
+      dispatchToast(
+        <Toast>
+          <ToastTitle>Copied {doc.documentNumber}</ToastTitle>
+        </Toast>,
+        { intent: 'success' },
+      );
+    } catch {
+      // Clipboard may be unavailable (e.g. insecure context); ignore silently.
+    }
+  }
+
   return (
     <div className={styles.root}>
       <Toaster toasterId={toasterId} />
@@ -142,6 +161,20 @@ export function DocumentDetailPage() {
       <div className={styles.topRow}>
         <div className={styles.titleGroup}>
           <Title2>{doc.documentName}</Title2>
+          {doc.documentNumber ? (
+            <div className={styles.docNumberRow}>
+              <Text className={styles.docNumber}>{doc.documentNumber}</Text>
+              <Tooltip content="Copy document number" relationship="label">
+                <Button
+                  appearance="transparent"
+                  size="small"
+                  icon={<Copy16Regular />}
+                  aria-label={`Copy document number ${doc.documentNumber}`}
+                  onClick={copyDocumentNumber}
+                />
+              </Tooltip>
+            </div>
+          ) : null}
           <div className={styles.badges}>
             <ProcessingStatusBadge status={doc.processingStatus} />
             <ReviewStatusBadge status={doc.reviewStatus} />
@@ -251,6 +284,8 @@ export function DocumentDetailPage() {
         <Card className={styles.panel}>
           <Title3>Details</Title3>
           <div className={styles.meta}>
+            <Text className={styles.metaLabel}>Document Number</Text>
+            <Text>{doc.documentNumber ?? '—'}</Text>
             <Text className={styles.metaLabel}>Document Type</Text>
             <Text>{doc.documentTypeName ?? 'Unclassified (set by the Agent)'}</Text>
             <Text className={styles.metaLabel}>Random Draw Value</Text>
