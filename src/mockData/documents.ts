@@ -170,6 +170,8 @@ export const seedSkillUpdateRequests: SkillUpdateRequest[] = [
     documentTypeName: 'Receipt',
     suggestedFix:
       'The agent read the tax line as part of the subtotal. Teach the skill to detect a separate "Tax" line and exclude it from the item subtotal.',
+    agentRecommendation:
+      'Current behaviour: the extraction prompt sums every numeric line above "Total" into Subtotal, which folds the tax amount into the item subtotal.\n\nProposed change:\n1. Add a labelled-line classifier that recognises "Tax", "VAT", "GST", and "Sales Tax" (case-insensitive) and routes their amounts to a dedicated taxAmount field.\n2. Recompute Subtotal as the sum of item lines only, then assert Subtotal + taxAmount == Total within a 0.02 tolerance.\n3. When the assertion fails, flag the document for review instead of silently emitting a wrong subtotal.\n\nExpected impact: receipts with a separate tax line extract a correct item subtotal and a populated tax field.',
     status: SkillUpdateStatus.InProgress,
     requestedOn: '2026-03-02T09:00:00Z',
   },
@@ -194,6 +196,8 @@ export const seedSkillUpdateRequests: SkillUpdateRequest[] = [
     documentTypeName: 'Receipt',
     suggestedFix:
       'Date was extracted in DD/MM order for a US receipt. Teach the skill to infer locale from the merchant address.',
+    agentRecommendation:
+      'Root cause: the date parser defaults to DD/MM/YYYY, so 03/04 on a US receipt is read as 4 March instead of 3 April.\n\nProposed change: before parsing any ambiguous date, resolve the merchant locale from the address block (country / state) and pass it to the parser so US addresses use MM/DD/YYYY. Where the address is missing, fall back to checking whether either ordering yields a day > 12 to disambiguate, and flag for review when still ambiguous.',
     status: SkillUpdateStatus.Completed,
     requestedOn: '2026-02-20T10:00:00Z',
     resolvedOn: '2026-02-27T16:30:00Z',

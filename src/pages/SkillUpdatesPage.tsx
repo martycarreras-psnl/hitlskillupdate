@@ -30,7 +30,9 @@ import { SkillUpdateStatus } from '@/types/domain-models';
 import { ALL_SKILL_UPDATE_STATUSES, skillUpdateStatusLabels } from '@/constants/status';
 import { SkillUpdateStatusBadge } from '@/components/StatusBadge';
 import { DocumentPreviewDialog } from '@/components/DocumentPreviewDialog';
+import { AgentRecommendationDialog } from '@/components/AgentRecommendationDialog';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
+import type { SkillUpdateRequest } from '@/types/domain-models';
 
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
@@ -69,6 +71,7 @@ export function SkillUpdatesPage() {
 
   const [statusFilter, setStatusFilter] = useState<'all' | SkillUpdateStatus>('all');
   const [previewDocId, setPreviewDocId] = useState<string | null>(null);
+  const [recommendationReq, setRecommendationReq] = useState<SkillUpdateRequest | null>(null);
 
   // Resolve the linked Document's friendly number/name from the documents list so the
   // table never shows a raw GUID (the lookup's formatted name isn't always returned).
@@ -132,6 +135,7 @@ export function SkillUpdatesPage() {
                 <TableHeaderCell>Suggested Fix</TableHeaderCell>
                 <TableHeaderCell>Document</TableHeaderCell>
                 <TableHeaderCell>Type</TableHeaderCell>
+                <TableHeaderCell>Recommendation</TableHeaderCell>
                 <TableHeaderCell>Status</TableHeaderCell>
                 <TableHeaderCell>Requested</TableHeaderCell>
                 <TableHeaderCell />
@@ -171,6 +175,15 @@ export function SkillUpdatesPage() {
                   </TableCell>
                   <TableCell>{req.documentTypeName ?? '—'}</TableCell>
                   <TableCell>
+                    <Button
+                      appearance={req.agentRecommendation ? 'secondary' : 'subtle'}
+                      size="small"
+                      onClick={() => setRecommendationReq(req)}
+                    >
+                      {req.agentRecommendation ? 'View / Edit' : 'Add'}
+                    </Button>
+                  </TableCell>
+                  <TableCell>
                     <SkillUpdateStatusBadge status={req.status} />
                   </TableCell>
                   <TableCell>{formatDate(req.requestedOn)}</TableCell>
@@ -206,6 +219,12 @@ export function SkillUpdatesPage() {
         documentId={previewDocId}
         open={previewDocId !== null}
         onClose={() => setPreviewDocId(null)}
+      />
+
+      <AgentRecommendationDialog
+        request={recommendationReq}
+        open={recommendationReq !== null}
+        onClose={() => setRecommendationReq(null)}
       />
     </div>
   );

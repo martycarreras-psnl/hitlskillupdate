@@ -97,6 +97,13 @@ export interface SkillUpdateRequest {
   documentName?: string;
   documentTypeName?: string;
   suggestedFix: string;
+  /**
+   * The agent's verbose recommendation for how to update the skill, derived from the
+   * reviewer's suggested fix in the context of the skill's current content. Populated
+   * by the agent; viewable and editable on the record. (Dataverse memo column
+   * msfthitl_agentrecommendation.)
+   */
+  agentRecommendation?: string;
   status: SkillUpdateStatus;
   requestedOn?: string;
   resolvedOn?: string;

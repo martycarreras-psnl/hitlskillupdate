@@ -306,6 +306,10 @@ function toSkillUpdateRequest(rec: Msfthitl_skillupdaterequests): SkillUpdateReq
       undefined,
     documentTypeName: rec.msfthitl_documenttypename ?? undefined,
     suggestedFix: rec.msfthitl_suggestedfix,
+    // Agent-populated; not on the generated type until the column is provisioned and
+    // the data source is regenerated, so read it defensively. msfthitl_agentrecommendation.
+    agentRecommendation:
+      (rec as { msfthitl_agentrecommendation?: string }).msfthitl_agentrecommendation ?? undefined,
     status: Number(rec.msfthitl_skillupdatestatus) as SkillUpdateStatus,
     requestedOn: rec.msfthitl_requestedon ?? undefined,
     resolvedOn: rec.msfthitl_resolvedon ?? undefined,
@@ -343,6 +347,7 @@ function createSkillUpdateRequestRepository(): SkillUpdateRequestRepository {
       const body: Record<string, unknown> = {};
       if (changes.name !== undefined) body.msfthitl_skillupdaterequestname = changes.name;
       if (changes.suggestedFix !== undefined) body.msfthitl_suggestedfix = changes.suggestedFix;
+      if (changes.agentRecommendation !== undefined) body.msfthitl_agentrecommendation = changes.agentRecommendation;
       if (changes.documentTypeName !== undefined) body.msfthitl_documenttypename = changes.documentTypeName;
       if (changes.status !== undefined) body.msfthitl_skillupdatestatus = changes.status;
       if (changes.resolvedOn !== undefined) body.msfthitl_resolvedon = changes.resolvedOn;

@@ -345,6 +345,16 @@
           "description": "The reviewer's description of what should be improved in the underlying agent skill (entered in the rejection dialog)."
         },
         {
+          "schemaName": "msfthitl_agentrecommendation",
+          "displayName": "Agent Recommendation",
+          "logicalName": "msfthitl_agentrecommendation",
+          "type": "Memo",
+          "format": "TextArea",
+          "maxLength": 100000,
+          "requiredLevel": "None",
+          "description": "The agent's proposed, verbose recommendation for how to update the skill — generated from the reviewer's suggested fix in the context of the skill's current content. Stored on the request and editable by a reviewer/admin before the skill is updated."
+        },
+        {
           "schemaName": "msfthitl_skillupdatestatus",
           "displayName": "Skill Update Status",
           "logicalName": "msfthitl_skillupdatestatus",
