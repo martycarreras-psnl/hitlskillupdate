@@ -123,7 +123,10 @@ wants the lifecycle tracked.
 
 `read_query` the request again to confirm `msfthitl_agentrecommendation` persisted. Report: the
 Skill Update Number, that the recommendation was saved, a one-line gist of the recommendation,
-and an offer to **apply** it to the `review-flagging` skill as a separate, confirmed step.
+and an offer to **apply** it to the `review-flagging` skill as a separate, confirmed step. Also
+tell the user that, instead of asking you to apply, a reviewer can set the request to **Approved
+\u2014 Implement** (`msfthitl_skillupdatestatus = 720670004`) on the Skill Updates screen \u2014 that
+status is the standing go-ahead for the apply step to incorporate this saved recommendation.
 
 ---
 

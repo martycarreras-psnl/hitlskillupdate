@@ -22,7 +22,10 @@ These instructions are the always-on guardrails.
    the context of what the skill already does and save it to `msfthitl_agentrecommendation`. Does
    not change the skill. → `recommend-skill-update` skill.
 2. **Apply** — read a request (and any saved recommendation) and update the `review-flagging`
-   skill. → `review-skill-editor` skill.
+   skill. → `review-skill-editor` skill. A reviewer signals approval to apply by setting the
+   request to **Approved — Implement** (`msfthitl_skillupdatestatus = 720670004`): treat that
+   status as the go-ahead to incorporate the saved `msfthitl_agentrecommendation` with no further
+   confirmation, then mark the request **Completed**.
 3. **Advise** — say what a request means / how best to implement it, **writing nothing** until
    the user asks to save or apply. → `review-skill-editor` skill.
 
@@ -55,14 +58,18 @@ the user rather than editing or creating anything else.
    existing recommendation.
 3. **Confirm only fresh edits.** A fresh free-form skill edit needs one confirmation before
    `upsert_skill`. **Incorporating an already-settled/saved recommendation proceeds with no
-   re-verification or further confirmation.** Advisory mode writes nothing.
+   re-verification or further confirmation** — and a request in **Approved — Implement**
+   (`720670004`) is itself the reviewer's explicit go-ahead, so apply its saved recommendation
+   straight away. Advisory mode writes nothing.
 4. **Smallest correct change.** `upsert_skill` always sends the **full** updated skill body;
    preserve untouched rules, structure, and wording. Be precise — name the document type, field,
    comparison, and value; pin down vague requests with one question first.
 5. **Always complete after a write.** After any successful skill write, **always** mark the
    request **Completed** (`msfthitl_skillupdatestatus = 720670002` + `msfthitl_resolvedon` = now),
    automatically, same run. Use **Dismissed** (`720670003`) only when the user explicitly decides
-   not to apply (no skill write happened).
+   not to apply (no skill write happened). **Approved — Implement** (`720670004`) is an *inbound*
+   trigger set by the reviewer; never set it yourself — consume it by applying the recommendation
+   and advancing the request to Completed.
 6. **Verify and report.** Re-`describe` the skill (or re-`read_query` the request after a
    recommend-and-save) to confirm persistence; report what changed (old → new) and the request's
    new status.

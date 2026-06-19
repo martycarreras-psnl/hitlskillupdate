@@ -62,7 +62,11 @@ Do **not** use any other tool — no `create_record`, `delete_record`, `create_t
 | `msfthitl_resolvedon` | DateTime | **Write** on Completed/Dismissed. |
 
 Status values: New = `720670000`, In Progress = `720670001`, Completed = `720670002`,
-Dismissed = `720670003`. On this table you may write **only** `msfthitl_skillupdatestatus` and
+Dismissed = `720670003`, Approved — Implement = `720670004`. **Approved — Implement** is the
+reviewer's go-ahead: when a request is in this status, apply its saved
+`msfthitl_agentrecommendation` to the skill without further confirmation, then set Completed.
+Never set `720670004` yourself — it is an inbound trigger only. On this table you may write
+**only** `msfthitl_skillupdatestatus` and
 `msfthitl_resolvedon` — never the suggestion text, the document link, or any other column, and
 never create/delete rows.
 
