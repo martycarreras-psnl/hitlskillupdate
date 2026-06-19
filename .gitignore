@@ -39,3 +39,7 @@ scripts/__pycache__/
 *.pyc
 .token_cache.bin
 solutions/*.zip
+
+# Plaintext source for the passcode-gated GitHub Pages site — never commit.
+# Regenerate the encrypted docs/index.html with: node scripts/encrypt-page.mjs
+docs/index.source.html
