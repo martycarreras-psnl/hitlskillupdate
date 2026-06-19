@@ -3,16 +3,29 @@
 // and renders images inline; PDFs render to <canvas> via a lazily-loaded PDF.js
 // viewer (keeps pdf.js out of the main bundle), with a download fallback.
 
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import {
   Button,
   Card,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  DialogTrigger,
   Link,
   Text,
+  Tooltip,
   makeStyles,
   tokens,
 } from '@fluentui/react-components';
-import { Open16Regular } from '@fluentui/react-icons';
+import {
+  Dismiss24Regular,
+  Open16Regular,
+  ZoomIn24Regular,
+  ZoomOut24Regular,
+} from '@fluentui/react-icons';
 import { useSourceFileUrl } from '@/hooks/useDocuments';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
 
@@ -40,6 +53,7 @@ const useStyles = makeStyles({
     objectFit: 'contain',
     borderRadius: tokens.borderRadiusMedium,
     backgroundColor: tokens.colorNeutralBackground2,
+    cursor: 'zoom-in',
   },
   fallback: {
     display: 'flex',
@@ -47,7 +61,105 @@ const useStyles = makeStyles({
     gap: tokens.spacingVerticalS,
     alignItems: 'flex-start',
   },
+  zoomSurface: {
+    maxWidth: '95vw',
+    width: 'fit-content',
+  },
+  zoomViewport: {
+    maxHeight: '78vh',
+    overflow: 'auto',
+    backgroundColor: tokens.colorNeutralBackground2,
+    borderRadius: tokens.borderRadiusMedium,
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  zoomImage: {
+    display: 'block',
+    transformOrigin: 'top center',
+    transition: 'width 0.1s ease',
+  },
+  zoomControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: tokens.spacingHorizontalS,
+  },
 });
+
+const ZOOM_LEVELS = [1, 1.5, 2, 3, 4];
+
+function ImageZoomDialog({ url, fileName }: { url: string; fileName: string }) {
+  const styles = useStyles();
+  const [zoomIndex, setZoomIndex] = useState(0);
+  const zoom = ZOOM_LEVELS[zoomIndex];
+
+  return (
+    <Dialog>
+      <DialogTrigger disableButtonEnhancement>
+        <Tooltip content="Click to enlarge" relationship="label">
+          <img
+            className={styles.image}
+            src={url}
+            alt={fileName}
+            role="button"
+            tabIndex={0}
+          />
+        </Tooltip>
+      </DialogTrigger>
+      <DialogSurface className={styles.zoomSurface}>
+        <DialogBody>
+          <DialogTitle
+            action={
+              <div className={styles.zoomControls}>
+                <Tooltip content="Zoom out" relationship="label">
+                  <Button
+                    appearance="subtle"
+                    icon={<ZoomOut24Regular />}
+                    disabled={zoomIndex === 0}
+                    onClick={() => setZoomIndex((i) => Math.max(0, i - 1))}
+                    aria-label="Zoom out"
+                  />
+                </Tooltip>
+                <Text>{Math.round(zoom * 100)}%</Text>
+                <Tooltip content="Zoom in" relationship="label">
+                  <Button
+                    appearance="subtle"
+                    icon={<ZoomIn24Regular />}
+                    disabled={zoomIndex === ZOOM_LEVELS.length - 1}
+                    onClick={() => setZoomIndex((i) => Math.min(ZOOM_LEVELS.length - 1, i + 1))}
+                    aria-label="Zoom in"
+                  />
+                </Tooltip>
+                <DialogTrigger disableButtonEnhancement>
+                  <Button appearance="subtle" icon={<Dismiss24Regular />} aria-label="Close" />
+                </DialogTrigger>
+              </div>
+            }
+          >
+            {fileName}
+          </DialogTitle>
+          <DialogContent>
+            <div className={styles.zoomViewport}>
+              <img
+                className={styles.zoomImage}
+                src={url}
+                alt={fileName}
+                style={{ width: `${zoom * 100}%`, cursor: zoomIndex === ZOOM_LEVELS.length - 1 ? 'zoom-out' : 'zoom-in' }}
+                onClick={() =>
+                  setZoomIndex((i) => (i === ZOOM_LEVELS.length - 1 ? 0 : i + 1))
+                }
+              />
+            </div>
+          </DialogContent>
+          <DialogActions>
+            <Link href={url} download={fileName}>
+              Download {fileName}
+            </Link>
+          </DialogActions>
+        </DialogBody>
+      </DialogSurface>
+    </Dialog>
+  );
+}
 
 export function SourceFileViewer({ documentId }: { documentId: string }) {
   const styles = useStyles();
@@ -83,7 +195,7 @@ export function SourceFileViewer({ documentId }: { documentId: string }) {
       </div>
 
       {isImage ? (
-        <img className={styles.image} src={data.url} alt={data.fileName} />
+        <ImageZoomDialog url={data.url} fileName={data.fileName} />
       ) : isPdf ? (
         <>
           <Suspense fallback={<LoadingState label="Loading PDF viewer…" />}>
