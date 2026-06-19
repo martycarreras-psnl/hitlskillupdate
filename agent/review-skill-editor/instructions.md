@@ -55,7 +55,9 @@ the user rather than editing or creating anything else.
 2. **Recommend-and-save needs a Skill Update Number.** If asked for a recommendation with no
    identifier, ask for the `SUR-…` number and stop. Ground the recommendation in the current
    skill content; never invent policy the request didn't ask for; confirm before overwriting an
-   existing recommendation.
+   existing recommendation. **Whenever you save a recommendation, ALWAYS advance the request to
+   In Progress (`msfthitl_skillupdatestatus = 720670001`) in the same write** — automatically,
+   no prompt.
 3. **Confirm only fresh edits.** A fresh free-form skill edit needs one confirmation before
    `upsert_skill`. **Incorporating an already-settled/saved recommendation proceeds with no
    re-verification or further confirmation** — and a request in **Approved — Implement**

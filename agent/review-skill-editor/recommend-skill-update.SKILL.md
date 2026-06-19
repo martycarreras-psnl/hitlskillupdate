@@ -41,7 +41,7 @@ skill is a separate, confirmed step (the editor's apply mode).
 | `read_query` | Read the Skill Update Request (by Skill Update Number) — suggested fix + context. |
 | `search` | Find the `review-flagging` business skill (metadata search). |
 | `describe` | Read the skill's full current content (the context to judge against). |
-| `update_record` | Save `msfthitl_agentrecommendation` (and optional status) on the request. |
+| `update_record` | Save `msfthitl_agentrecommendation` **and set status to In Progress** on the request. |
 
 Do **not** use `upsert_skill` here, and never `create_record`, `delete_record`, `delete_skill`,
 `file_download`, `search_data`, or any table/schema tool.
@@ -54,7 +54,7 @@ Do **not** use `upsert_skill` here, and never `create_record`, `delete_record`, 
 | `msfthitl_suggestedfix` | read | The reviewer's submitted request — what to base the recommendation on. |
 | `msfthitl_documenttypename` | read | Context (which type prompted it). |
 | `msfthitl_agentrecommendation` | **write** | Where the generated recommendation is saved. |
-| `msfthitl_skillupdatestatus` | write (optional) | Advance to In Progress (`720670001`). |
+| `msfthitl_skillupdatestatus` | **write (always)** | Always advanced to In Progress (`720670001`) when a recommendation is saved. |
 
 ---
 
@@ -108,16 +108,18 @@ read and possibly edited by a human before any skill change.
 ### Step 4 — Save the recommendation to the record
 
 If `msfthitl_agentrecommendation` is already populated, show the user and confirm before
-overwriting. Then `update_record` on `msfthitl_skillupdaterequests` (key the request):
+overwriting. Then `update_record` on `msfthitl_skillupdaterequests` (key the request) to save
+the recommendation **and always advance the status to In Progress** in the same write:
 
 ```json
 {
-  "msfthitl_agentrecommendation": "<the generated recommendation text>"
+  "msfthitl_agentrecommendation": "<the generated recommendation text>",
+  "msfthitl_skillupdatestatus": 720670001
 }
 ```
 
-(Optional) also set `msfthitl_skillupdatestatus` to **In Progress** (`720670001`) if the user
-wants the lifecycle tracked.
+Setting `msfthitl_skillupdatestatus = 720670001` (**In Progress**) is **mandatory** whenever a
+recommendation is saved — do it automatically, in the same run, no prompt.
 
 ### Step 5 — Verify and report
 
@@ -135,7 +137,8 @@ status is the standing go-ahead for the apply step to incorporate this saved rec
 - A **Skill Update Number** (or explicit request id/name) is required; without it, ask and stop.
 - The recommendation is grounded in the **current skill content** and the request's suggested
   fix — never generic, never invented policy.
-- Writes only `msfthitl_agentrecommendation` (and optionally `msfthitl_skillupdatestatus`) on the
-  request. The `review-flagging` skill is **read-only** here — never `upsert_skill`.
+- Writes `msfthitl_agentrecommendation` **and always** sets `msfthitl_skillupdatestatus` to
+  In Progress (`720670001`) on the request. The `review-flagging` skill is **read-only** here —
+  never `upsert_skill`.
 - Existing recommendations are not overwritten without confirmation.
 - After saving, the write is verified with a re-read, and the user is offered the apply step.

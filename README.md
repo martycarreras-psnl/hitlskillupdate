@@ -65,6 +65,91 @@ side.
                                   next run follows the improved rule ↺
 ```
 
+### Workflow diagram
+
+The same loop, step by step — from upload through extraction, the two review triggers, and the
+self-improving skill-update cycle that feeds back into future runs.
+
+```mermaid
+flowchart TD
+    subgraph INTAKE["1 · Document Intake"]
+        A[User uploads one or more documents] --> B[System assigns a unique Document ID to each]
+    end
+
+    subgraph TRIGGER["2 · Processing Kickoff via M365 Copilot"]
+        C["User initiates processing in M365 Copilot<br/>(provides Doc ID + uploads the document)<br/><i>temporary — automation planned</i>"]
+    end
+
+    subgraph EXTRACT["3 · Extraction"]
+        D["Agent processes the document using<br/>Document-Extraction Skills"] --> E[Contents extracted into structured JSON]
+    end
+
+    subgraph FLAG["4–5 · Review-Trigger Evaluation"]
+        F{"Random number ==<br/>configured 'pick' number?"}
+        G["Apply Business Rules Skill<br/>(stored in Dataverse Business Skills)"]
+        H{"Any business rule<br/>tripped?"}
+    end
+
+    NOREVIEW(["Auto-complete<br/>no human review needed"])
+
+    subgraph REVIEW["6–7 · Human Review"]
+        I["Reviewer inspects extracted data,<br/>edits any incorrect values"]
+        J{"Accept or<br/>Reject?"}
+        K["Reject with Comments →<br/>prompted to suggest how the<br/>Business Rule Skill should improve"]
+        ACCEPT(["Accept →<br/>document finalized"])
+    end
+
+    subgraph IMPROVE["8–10 · Self-Improving Skill Loop"]
+        L["Skill Update Request created<br/>in Dataverse"]
+        M["<b>Workflow triggers Skill-Update Agent</b><br/>(prompt driven by record status = <i>New</i>):<br/>analyzes feedback, generates a<br/>recommended fix to the Business Skill"]
+        N{"User approves<br/>the change?"}
+        O["<b>Same workflow re-triggers Skill-Update Agent</b><br/>(prompt driven by record status = <i>Approved</i>):<br/>directly updates the Business Skill<br/>record in Dataverse"]
+    end
+
+    UPDATED[("Updated Business Skill<br/>in Dataverse")]
+
+    A --> C
+    B --> C
+    C --> D
+    E --> F
+    F -- Yes --> I
+    F -- No --> G
+    G --> H
+    H -- Yes --> I
+    H -- No --> NOREVIEW
+    I --> J
+    J -- Accept --> ACCEPT
+    J -- Reject --> K
+    K --> L
+    L --> M
+    M --> N
+    N -- No --> M
+    N -- Yes --> O
+    O --> UPDATED
+    UPDATED -. "subsequent runs pick up<br/>improved skills" .-> G
+
+    classDef intake fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
+    classDef trigger fill:#EDE7F6,stroke:#5E35B1,color:#311B92;
+    classDef extract fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20;
+    classDef flag fill:#FFF8E1,stroke:#F9A825,color:#F57F17;
+    classDef review fill:#FCE4EC,stroke:#C2185B,color:#880E4F;
+    classDef improve fill:#E0F7FA,stroke:#00838F,color:#006064;
+    classDef terminal fill:#ECEFF1,stroke:#546E7A,color:#263238;
+
+    class A,B intake;
+    class C trigger;
+    class D,E extract;
+    class F,G,H flag;
+    class I,J,K review;
+    class L,M,N,O improve;
+    class NOREVIEW,ACCEPT,UPDATED terminal;
+```
+
+> **Steps 8 and 10 are the same Power Automate workflow invoking the same Skill-Update Agent.**
+> The workflow fires on changes to the Skill Update Request record and selects the agent's prompt
+> based on the record's **status**: a *New* request prompts the agent to **recommend** a fix; an
+> *Approved* request prompts it to **apply** the fix to the live Business Skill.
+
 **The app deliberately does *not* read or extract document content.** It owns upload, the random
 review draw, the dynamic editor, the review loop, and the skill-update request lifecycle. The
 extraction agent, the flagging rules, and the Power Automate flow that orchestrates them are
