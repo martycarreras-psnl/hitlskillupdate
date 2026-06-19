@@ -612,6 +612,92 @@ flowchart TD
           <code>Skill Update Request</code> is the bridge from the app to the agent skills.
         </p>
 
+        <h3 style="margin-bottom:10px;">Entity-relationship diagram</h3>
+        <div class="diagram-card" style="margin-bottom:14px;">
+          <pre class="mermaid">
+erDiagram
+    DOCUMENT_TYPE ||--o{ DOCUMENT : "classifies"
+    DOCUMENT ||--o{ SKILL_UPDATE_REQUEST : "rejection raises"
+    PROCESSING_STATUS ||--o{ DOCUMENT : "Processing Status"
+    REVIEW_STATUS ||--o{ DOCUMENT : "Review Status"
+    SKILL_UPDATE_STATUS ||--o{ SKILL_UPDATE_REQUEST : "Skill Update Status"
+
+    DOCUMENT {
+        autonumber Document_Number "DOC-2026-00001"
+        string Document_Name "primary"
+        file Source_File "PDF / JPG / PNG"
+        lookup Document_Type_id FK "→ Document Type"
+        choice Processing_Status "→ Processing Status"
+        memo Extracted_Data "variable JSON"
+        int Random_Draw_Value
+        bool Flagged_For_Review
+        choice Review_Status "→ Review Status"
+        memo Review_Comment
+        memo Processing_Error
+        datetime Processed_On
+        datetime Reviewed_On
+    }
+
+    DOCUMENT_TYPE {
+        string Type_Name "primary"
+        memo Description
+        bool Is_Active
+    }
+
+    REVIEW_SETTINGS {
+        string Name "primary · single row"
+        int Range_Min "default 1"
+        int Range_Max "default 20"
+        int Trigger_Value "default 7"
+    }
+
+    SKILL_UPDATE_REQUEST {
+        autonumber Skill_Update_Number "SUR-2026-00001"
+        string Name "primary"
+        lookup Document_id FK "→ Document"
+        string Document_Type "denormalized"
+        memo Suggested_Fix "reviewer input"
+        memo Agent_Recommendation "agent output"
+        choice Skill_Update_Status "→ Skill Update Status"
+        datetime Requested_On
+        datetime Resolved_On
+    }
+
+    PROCESSING_STATUS {
+        int _720670000 "Uploaded"
+        int _720670001 "Queued (flow watches)"
+        int _720670002 "Processing"
+        int _720670003 "Processed"
+        int _720670004 "Failed"
+    }
+
+    REVIEW_STATUS {
+        int _720670000 "Not Required"
+        int _720670001 "Pending Review"
+        int _720670002 "In Review"
+        int _720670003 "Approved"
+        int _720670004 "Rejected"
+    }
+
+    SKILL_UPDATE_STATUS {
+        int _720670000 "New"
+        int _720670001 "In Progress"
+        int _720670002 "Completed"
+        int _720670003 "Dismissed"
+        int _720670004 "Approved — Implement"
+    }
+          </pre>
+        </div>
+        <div class="callout" style="margin-bottom:28px;">
+          <strong>Reading the diagram:</strong> solid lines are real Dataverse lookups
+          (<code>Document → Document Type</code>, <code>Skill Update Request → Document</code>).
+          The three <em>Status</em> boxes are the global <strong>option sets</strong> (choices),
+          shown with their integer values on the <code>720670000</code> base — referenced by the
+          <code>Processing Status</code>, <code>Review Status</code>, and
+          <code>Skill Update Status</code> columns. <code>Review Settings</code> is a single-row
+          config table with no foreign keys.
+        </div>
+
         <h3 style="margin-bottom:10px;">Document — the central record</h3>
         <div class="table-scroll" style="margin-bottom:28px;">
           <table>
@@ -692,17 +778,15 @@ flowchart TD
       }
 
       function renderMermaid() {
-        // Re-init then render the (single) diagram. Keep the source so we can re-render on theme switch.
-        const el = document.querySelector(".mermaid");
-        if (!el) return;
-        if (!el.dataset.src) el.dataset.src = el.textContent;
-        el.removeAttribute("data-processed");
-        el.innerHTML = el.dataset.src;
+        // Re-init then render every diagram. Keep each source so we can re-render on theme switch.
+        const els = Array.from(document.querySelectorAll(".mermaid"));
+        if (!els.length) return;
         mermaid.initialize({
           startOnLoad: false,
           theme: mermaidTheme(),
           securityLevel: "loose",
           flowchart: { htmlLabels: true, curve: "basis", useMaxWidth: true },
+          er: { useMaxWidth: true },
           themeVariables: {
             fontFamily: '"Segoe UI", Aptos, Calibri, sans-serif',
             primaryColor: getCss("--cp-accent-soft"),
@@ -713,7 +797,12 @@ flowchart TD
             tertiaryColor: getCss("--cp-bg-elevated"),
           },
         });
-        mermaid.run({ nodes: [el] });
+        els.forEach((el) => {
+          if (!el.dataset.src) el.dataset.src = el.textContent;
+          el.removeAttribute("data-processed");
+          el.innerHTML = el.dataset.src;
+        });
+        mermaid.run({ nodes: els });
       }
 
       function getCss(name) {
