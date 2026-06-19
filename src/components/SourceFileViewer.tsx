@@ -86,14 +86,7 @@ export function SourceFileViewer({ documentId }: { documentId: string }) {
       {isImage ? (
         <img className={styles.image} src={data.url} alt={data.fileName} />
       ) : isPdf ? (
-        <object className={styles.pdf} data={data.url} type="application/pdf" aria-label={data.fileName}>
-          <div className={styles.fallback}>
-            <Text>Your browser can’t display this PDF inline.</Text>
-            <Link href={data.url} target="_blank" rel="noreferrer">
-              Open {data.fileName}
-            </Link>
-          </div>
-        </object>
+        <iframe className={styles.pdf} src={data.url} title={data.fileName} />
       ) : (
         <div className={styles.fallback}>
           <Text>Preview isn’t available for this file type.</Text>

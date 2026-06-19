@@ -51,6 +51,11 @@ interface MockStore {
   documentTypes: DocumentType[];
   reviewSettings: ReviewSettings;
   skillUpdateRequests: SkillUpdateRequest[];
+  /**
+   * Object URLs for blobs uploaded this session, keyed by document id. Kept out of
+   * DocumentRecord because the record is JSON-cloned (which would destroy a File/Blob).
+   */
+  uploadedFiles: Map<string, Blob>;
 }
 
 function createStore(): MockStore {
@@ -59,6 +64,7 @@ function createStore(): MockStore {
     documentTypes: clone(seedDocumentTypes),
     reviewSettings: clone(seedReviewSettings),
     skillUpdateRequests: clone(seedSkillUpdateRequests),
+    uploadedFiles: new Map(),
   };
 }
 
@@ -87,6 +93,10 @@ function createDocumentRepository(store: MockStore): DocumentRepository {
         createdOn: new Date().toISOString(),
       };
       store.documents.unshift(record);
+      // Retain the uploaded blob so the viewer can render the real file this session.
+      if (input.sourceFile) {
+        store.uploadedFiles.set(record.id, input.sourceFile);
+      }
       return delay(clone(record));
     },
     async update(id, changes) {
@@ -165,10 +175,28 @@ function createSkillUpdateRequestRepository(store: MockStore): SkillUpdateReques
 }
 
 function createSourceFileService(store: MockStore): SourceFileService {
+  // Cache one object URL per uploaded blob so repeated reads return a stable URL
+  // instead of allocating (and leaking) a new one each call.
+  const objectUrlCache = new Map<string, string>();
   return {
     async getSourceFileUrl(documentId): Promise<SourceFileRef | null> {
       const doc = store.documents.find((d) => d.id === documentId);
       if (!doc || !doc.sourceFileName) return null;
+      // Prefer the real uploaded blob (served as an object URL) when one exists this
+      // session; seeded demo records fall back to a bundled sample asset.
+      const blob = store.uploadedFiles.get(documentId);
+      if (blob) {
+        let url = objectUrlCache.get(documentId);
+        if (!url) {
+          url = URL.createObjectURL(blob);
+          objectUrlCache.set(documentId, url);
+        }
+        return delay({
+          url,
+          mimeType: doc.sourceFileMimeType || blob.type || 'application/octet-stream',
+          fileName: doc.sourceFileName,
+        });
+      }
       const asset = sampleAssetFor(doc.sourceFileMimeType);
       return delay({
         url: asset.url,
