@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HITL Skill Improvement — Document Intake &amp; Human-in-the-Loop Review</title>
+    <script>
+      (() => {
+        const param = new URLSearchParams(window.location.search).get("scoutTheme");
+        const stored = localStorage.getItem("hitl-theme");
+        const theme =
+          param ||
+          stored ||
+          (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+      })();
+    </script>
+    <style>
+      :root {
+        color-scheme: light;
+        --cp-bg: #f7f4ef;
+        --cp-bg-elevated: #fcfbf8;
+        --cp-surface: #ffffff;
+        --cp-surface-soft: #f5f5f5;
+        --cp-border: #dedede;
+        --cp-border-strong: #919191;
+        --cp-text: #242424;
+        --cp-text-muted: #5c5c5c;
+        --cp-text-soft: #6f6f6f;
+        --cp-accent: #b11f4b;
+        --cp-accent-hover: #9a1a41;
+        --cp-accent-soft: rgba(177, 31, 75, 0.08);
+        --cp-accent-fg: #ffffff;
+        --cp-success: #16a34a;
+        --cp-danger: #dc2626;
+        --cp-warning: #f59e0b;
+        --cp-link: #0078d4;
+        --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+        --cp-overlay: rgba(255, 255, 255, 0.8);
+        --cp-panel: rgba(255, 255, 255, 0.86);
+        --cp-panel-strong: rgba(255, 255, 255, 0.96);
+        --cp-sheen: rgba(255, 255, 255, 0.55);
+        --cp-highlight: rgba(177, 31, 75, 0.12);
+      }
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --cp-bg: #3d3b3a;
+        --cp-bg-elevated: #343231;
+        --cp-surface: #292929;
+        --cp-surface-soft: #2e2e2e;
+        --cp-border: #474747;
+        --cp-border-strong: #5f5f5f;
+        --cp-text: #dedede;
+        --cp-text-muted: #919191;
+        --cp-text-soft: #b0b0b0;
+        --cp-accent: #fd8ea1;
+        --cp-accent-hover: #fb7b91;
+        --cp-accent-soft: rgba(253, 142, 161, 0.14);
+        --cp-accent-fg: #1a1a1a;
+        --cp-success: #4ade80;
+        --cp-danger: #f87171;
+        --cp-warning: #fbbf24;
+        --cp-link: #4da6ff;
+        --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+        --cp-overlay: rgba(41, 41, 41, 0.88);
+        --cp-panel: rgba(41, 41, 41, 0.72);
+        --cp-panel-strong: rgba(41, 41, 41, 0.96);
+        --cp-sheen: rgba(255, 255, 255, 0.04);
+        --cp-highlight: rgba(253, 142, 161, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        background: var(--cp-bg);
+        color: var(--cp-text);
+        font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      code, pre, .mono {
+        font-family: Consolas, "Courier New", Courier, monospace;
+      }
+
+      a { color: var(--cp-link); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+
+      /* ---------- Layout ---------- */
+      .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+      /* ---------- Top nav ---------- */
+      header.topbar {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: var(--cp-panel-strong);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--cp-border);
+      }
+      .topbar-inner {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        height: 60px;
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 0.98rem;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+      }
+      .brand .dot {
+        width: 11px; height: 11px; border-radius: 50%;
+        background: var(--cp-accent);
+        box-shadow: 0 0 0 4px var(--cp-accent-soft);
+      }
+      nav.sections {
+        display: flex;
+        gap: 4px;
+        margin-left: auto;
+        flex-wrap: wrap;
+      }
+      nav.sections a {
+        color: var(--cp-text-muted);
+        font-size: 0.86rem;
+        font-weight: 600;
+        padding: 6px 11px;
+        border-radius: 0.625rem;
+        text-decoration: none;
+      }
+      nav.sections a:hover { background: var(--cp-accent-soft); color: var(--cp-accent); }
+      .theme-toggle {
+        border: 1px solid var(--cp-border);
+        background: var(--cp-surface);
+        color: var(--cp-text);
+        border-radius: 0.625rem;
+        height: 36px; width: 36px;
+        cursor: pointer;
+        font-size: 1rem;
+        display: grid; place-items: center;
+        flex-shrink: 0;
+      }
+      .theme-toggle:hover { border-color: var(--cp-accent); }
+
+      /* ---------- Hero ---------- */
+      .hero { padding: 64px 0 32px; }
+      .eyebrow {
+        display: inline-block;
+        font-size: 0.74rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--cp-accent);
+        background: var(--cp-accent-soft);
+        padding: 5px 12px;
+        border-radius: 999px;
+        margin-bottom: 18px;
+      }
+      h1 {
+        font-size: clamp(2rem, 4.4vw, 3.1rem);
+        line-height: 1.08;
+        letter-spacing: -0.025em;
+        margin: 0 0 18px;
+      }
+      .lede {
+        font-size: 1.16rem;
+        color: var(--cp-text-muted);
+        max-width: 760px;
+        margin: 0 0 26px;
+      }
+      .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+      .btn {
+        display: inline-flex; align-items: center; gap: 8px;
+        font-weight: 650; font-size: 0.92rem;
+        padding: 11px 18px;
+        border-radius: 0.625rem;
+        cursor: pointer;
+        border: 1px solid transparent;
+        text-decoration: none;
+      }
+      .btn-primary { background: var(--cp-accent); color: var(--cp-accent-fg); }
+      .btn-primary:hover { background: var(--cp-accent-hover); text-decoration: none; }
+      .btn-ghost { background: var(--cp-surface); color: var(--cp-text); border-color: var(--cp-border); }
+      .btn-ghost:hover { border-color: var(--cp-accent); color: var(--cp-accent); text-decoration: none; }
+
+      /* ---------- Concept image ---------- */
+      .concept {
+        margin: 18px 0 8px;
+        border: 1px solid var(--cp-border);
+        border-radius: 16px;
+        overflow: hidden;
+        background: var(--cp-surface);
+        box-shadow: var(--cp-shadow);
+      }
+      .concept img { width: 100%; display: block; }
+      .concept figcaption {
+        padding: 14px 20px;
+        font-size: 0.88rem;
+        color: var(--cp-text-muted);
+        border-top: 1px solid var(--cp-border);
+        background: var(--cp-bg-elevated);
+      }
+
+      /* ---------- Sections ---------- */
+      section { padding: 50px 0; border-top: 1px solid var(--cp-border); }
+      section.no-rule { border-top: none; }
+      .kicker {
+        font-size: 0.76rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.1em; color: var(--cp-accent); margin-bottom: 10px;
+      }
+      h2 { font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 12px; letter-spacing: -0.02em; }
+      h3 { font-size: 1.16rem; margin: 0 0 8px; letter-spacing: -0.01em; }
+      .section-intro { color: var(--cp-text-muted); max-width: 740px; margin: 0 0 28px; font-size: 1.02rem; }
+
+      /* ---------- Step cards ---------- */
+      .steps { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+      .step {
+        position: relative;
+        background: var(--cp-surface);
+        border: 1px solid var(--cp-border);
+        border-radius: 16px;
+        padding: 22px 22px 20px;
+        box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+        transition: transform 0.15s ease, border-color 0.15s ease;
+      }
+      .step:hover { transform: translateY(-3px); border-color: var(--cp-accent); }
+      .step .num {
+        position: absolute; top: -14px; left: 20px;
+        width: 30px; height: 30px; border-radius: 9px;
+        background: var(--cp-accent); color: var(--cp-accent-fg);
+        font-weight: 700; font-size: 0.92rem;
+        display: grid; place-items: center;
+        box-shadow: 0 4px 10px var(--cp-accent-soft);
+      }
+      .step h3 { margin-top: 8px; font-size: 1.04rem; }
+      .step p { margin: 0; color: var(--cp-text-muted); font-size: 0.94rem; }
+      .step .tag {
+        display: inline-block; margin-top: 12px;
+        font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 4px 9px; border-radius: 999px;
+      }
+      .tag.app { background: var(--cp-accent-soft); color: var(--cp-accent); }
+      .tag.agent { background: rgba(22,163,74,0.12); color: var(--cp-success); }
+      .tag.copilot { background: rgba(0,120,212,0.12); color: var(--cp-link); }
+      .tag.human { background: rgba(245,158,11,0.14); color: var(--cp-warning); }
+
+      /* ---------- Mermaid panel ---------- */
+      .diagram-card {
+        background: var(--cp-surface);
+        border: 1px solid var(--cp-border);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: var(--cp-shadow);
+        overflow-x: auto;
+      }
+      .mermaid { display: flex; justify-content: center; }
+      .callout {
+        margin-top: 18px;
+        background: var(--cp-accent-soft);
+        border-left: 4px solid var(--cp-accent);
+        border-radius: 0 0.625rem 0.625rem 0;
+        padding: 14px 18px;
+        font-size: 0.95rem;
+        color: var(--cp-text);
+      }
+      .callout strong { color: var(--cp-accent); }
+
+      /* ---------- Two-column halves ---------- */
+      .halves { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+      .panel {
+        background: var(--cp-surface);
+        border: 1px solid var(--cp-border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+      }
+      .panel h3 { display: flex; align-items: center; gap: 9px; }
+      .pill {
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        padding: 3px 8px; border-radius: 999px;
+        background: var(--cp-surface-soft); color: var(--cp-text-muted);
+        border: 1px solid var(--cp-border);
+      }
+      ul.clean { margin: 12px 0 0; padding-left: 18px; color: var(--cp-text-muted); }
+      ul.clean li { margin-bottom: 7px; font-size: 0.95rem; }
+      ul.clean li strong { color: var(--cp-text); }
+
+      /* ---------- Tables ---------- */
+      .table-scroll { overflow-x: auto; border-radius: 16px; border: 1px solid var(--cp-border); }
+      table { width: 100%; border-collapse: collapse; background: var(--cp-surface); font-size: 0.92rem; }
+      thead th {
+        text-align: left; padding: 12px 16px;
+        background: var(--cp-bg-elevated);
+        color: var(--cp-text);
+        font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em;
+        border-bottom: 1px solid var(--cp-border);
+        white-space: nowrap;
+      }
+      tbody td { padding: 11px 16px; border-bottom: 1px solid var(--cp-border); color: var(--cp-text-muted); vertical-align: top; }
+      tbody tr:last-child td { border-bottom: none; }
+      tbody td strong { color: var(--cp-text); }
+      td code, .section-intro code, p code, li code {
+        background: var(--cp-surface-soft); border: 1px solid var(--cp-border);
+        border-radius: 6px; padding: 1px 6px; font-size: 0.85em;
+      }
+
+      .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+      .chip {
+        font-size: 0.8rem; font-weight: 600;
+        padding: 5px 11px; border-radius: 999px;
+        background: var(--cp-surface); border: 1px solid var(--cp-border); color: var(--cp-text-muted);
+      }
+      .chip b { color: var(--cp-accent); font-weight: 700; }
+
+      /* ---------- Screens grid ---------- */
+      .screens { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+      .screen { background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 14px; padding: 18px; }
+      .screen h4 { margin: 0 0 4px; font-size: 1rem; }
+      .screen .aud { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--cp-accent); }
+      .screen p { margin: 6px 0 0; font-size: 0.9rem; color: var(--cp-text-muted); }
+
+      /* ---------- Footer ---------- */
+      footer {
+        border-top: 1px solid var(--cp-border);
+        padding: 36px 0 56px;
+        color: var(--cp-text-soft);
+        font-size: 0.9rem;
+      }
+      footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+      @media (max-width: 640px) {
+        nav.sections { display: none; }
+        .hero { padding: 40px 0 20px; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="wrap topbar-inner">
+        <div class="brand"><span class="dot"></span> HITL Skill Improvement</div>
+        <nav class="sections">
+          <a href="#overview">Overview</a>
+          <a href="#how">How it works</a>
+          <a href="#flow">Workflow</a>
+          <a href="#loop">Skill loop</a>
+          <a href="#data">Data model</a>
+          <a href="#screens">Screens</a>
+        </nav>
+        <button class="theme-toggle" id="themeToggle" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
+      </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero no-rule">
+      <div class="wrap">
+        <span class="eyebrow">Power Apps Code App · Human-in-the-Loop</span>
+        <h1>Reviewers don't just fix data —<br />they upgrade the AI.</h1>
+        <p class="lede">
+          A closed feedback loop for document intake. An AI agent extracts structured data from
+          uploaded documents at scale; a configurable sample plus rule-based flags route records
+          to a human reviewer; and every rejection becomes an edit to the <em>live</em> agent
+          skill — so the next run is measurably better than the last.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#flow">View the workflow ↓</a>
+          <a class="btn btn-ghost" href="https://github.com/martycarreras-psnl/hitlskillupdate" target="_blank" rel="noopener">GitHub repo ↗</a>
+        </div>
+
+        <figure class="concept">
+          <img src="images/hitl-reinforcement-learning.png"
+               alt="Human-in-the-Loop Reinforcement Learning — an AI agent processes documents at scale, a random sample plus rule-based flags route records to a human reviewer, and reviewer corrections refine the agent's skills so future runs improve." />
+          <figcaption>
+            The big picture: an agent processes documents at scale → a random draw and business
+            rules sample records for human review → the reviewer approves or corrects → corrections
+            refine the skill → the improved skill is redeployed for better future performance.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- OVERVIEW -->
+    <section id="overview">
+      <div class="wrap">
+        <div class="kicker">The problem we solve</div>
+        <h2>Capture the lesson, not just the correction</h2>
+        <p class="section-intro">
+          Document-extraction agents are never perfect. The usual answer is to have a human fix the
+          output — which fixes <em>one</em> record but loses the lesson. This solution captures the
+          lesson and feeds it back into the agent's skills, stored in Dataverse, so quality
+          compounds over time.
+        </p>
+        <div class="chips">
+          <span class="chip"><b>React + TypeScript + Vite</b></span>
+          <span class="chip"><b>Fluent UI v9</b></span>
+          <span class="chip"><b>Dataverse</b></span>
+          <span class="chip"><b>M365 Copilot</b> kickoff</span>
+          <span class="chip"><b>Power Automate</b> + AI agent</span>
+          <span class="chip">Deployed via <b>pac code push</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS — step cards -->
+    <section id="how">
+      <div class="wrap">
+        <div class="kicker">End to end</div>
+        <h2>How it works, step by step</h2>
+        <p class="section-intro">
+          Ten steps across four players — the <span style="color:var(--cp-accent)">app</span>,
+          <span style="color:var(--cp-link)">M365 Copilot</span>, the
+          <span style="color:var(--cp-success)">AI agent</span>, and the
+          <span style="color:var(--cp-warning)">human reviewer</span>.
+        </p>
+        <div class="steps">
+          <div class="step">
+            <div class="num">1</div>
+            <h3>Upload &amp; identify</h3>
+            <p>A user uploads one or more documents. The system assigns each a unique Document ID.</p>
+            <span class="tag app">App</span>
+          </div>
+          <div class="step">
+            <div class="num">2</div>
+            <h3>Kick off in Copilot</h3>
+            <p>Using M365 Copilot, the user initiates processing for a Doc ID and uploads the file to process. <em>Temporary step until automation is introduced here.</em></p>
+            <span class="tag copilot">M365 Copilot</span>
+          </div>
+          <div class="step">
+            <div class="num">3</div>
+            <h3>Extract to JSON</h3>
+            <p>The agent processes the document and extracts its contents into a JSON file, driven by the extraction <strong>Skills</strong> in the agent.</p>
+            <span class="tag agent">AI agent</span>
+          </div>
+          <div class="step">
+            <div class="num">4</div>
+            <h3>Random review draw</h3>
+            <p>A random number is generated. If it matches the <strong>“pick”</strong> number set in Settings, the document is flagged for human review.</p>
+            <span class="tag app">App</span>
+          </div>
+          <div class="step">
+            <div class="num">5</div>
+            <h3>Business-rule flags</h3>
+            <p>The agent applies a set of business rules from a <strong>Skill stored in Dataverse</strong>. If any rule is “tripped,” that's another reason to flag for review.</p>
+            <span class="tag agent">AI agent</span>
+          </div>
+          <div class="step">
+            <div class="num">6</div>
+            <h3>Human review</h3>
+            <p>The reviewer confirms everything looks good and can make updates if something looks off — then chooses <strong>Accept</strong> or <strong>Reject with Comments</strong>.</p>
+            <span class="tag human">Reviewer</span>
+          </div>
+          <div class="step">
+            <div class="num">7</div>
+            <h3>Suggest an improvement</h3>
+            <p>On Reject with Comments, the reviewer is prompted to suggest how the business-rule skill should improve to address what needed fixing.</p>
+            <span class="tag human">Reviewer</span>
+          </div>
+          <div class="step">
+            <div class="num">8</div>
+            <h3>Recommendation generated</h3>
+            <p>Creating a skill update fires a workflow that triggers the skill-update agent to take that input and generate a concrete recommendation for the existing Business Skill.</p>
+            <span class="tag agent">Workflow → agent</span>
+          </div>
+          <div class="step">
+            <div class="num">9</div>
+            <h3>Approve the change</h3>
+            <p>The user reviews and approves the recommended change to the skill, updating the record's status accordingly.</p>
+            <span class="tag human">Reviewer</span>
+          </div>
+          <div class="step">
+            <div class="num">10</div>
+            <h3>Skill updated live</h3>
+            <p>The same workflow re-triggers the agent — this time to directly update the Business Skill in Dataverse. Subsequent runs pick up the improved skill.</p>
+            <span class="tag agent">Workflow → agent</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORKFLOW DIAGRAM -->
+    <section id="flow">
+      <div class="wrap">
+        <div class="kicker">The whole loop</div>
+        <h2>Workflow diagram</h2>
+        <p class="section-intro">
+          From upload through extraction, the two review triggers, human review, and the
+          self-improving skill-update cycle that feeds back into every future run.
+        </p>
+        <div class="diagram-card">
+          <pre class="mermaid">
+flowchart TD
+    subgraph INTAKE["1 · Document Intake"]
+        A[User uploads one or more documents] --> B[System assigns a unique Document ID to each]
+    end
+
+    subgraph TRIGGER["2 · Processing Kickoff via M365 Copilot"]
+        C["User initiates processing in M365 Copilot<br/>(provides Doc ID + uploads the document)<br/><i>temporary — automation planned</i>"]
+    end
+
+    subgraph EXTRACT["3 · Extraction"]
+        D["Agent processes the document using<br/>Document-Extraction Skills"] --> E[Contents extracted into structured JSON]
+    end
+
+    subgraph FLAG["4–5 · Review-Trigger Evaluation"]
+        F{"Random number ==<br/>configured 'pick' number?"}
+        G["Apply Business Rules Skill<br/>(stored in Dataverse Business Skills)"]
+        H{"Any business rule<br/>tripped?"}
+    end
+
+    NOREVIEW(["Auto-complete<br/>no human review needed"])
+
+    subgraph REVIEW["6–7 · Human Review"]
+        I["Reviewer inspects extracted data,<br/>edits any incorrect values"]
+        J{"Accept or<br/>Reject?"}
+        K["Reject with Comments →<br/>prompted to suggest how the<br/>Business Rule Skill should improve"]
+        ACCEPT(["Accept →<br/>document finalized"])
+    end
+
+    subgraph IMPROVE["8–10 · Self-Improving Skill Loop"]
+        L["Skill Update Request created<br/>in Dataverse"]
+        M["<b>Workflow triggers Skill-Update Agent</b><br/>(prompt driven by record status = <i>New</i>):<br/>analyzes feedback, generates a<br/>recommended fix to the Business Skill"]
+        N{"User approves<br/>the change?"}
+        O["<b>Same workflow re-triggers Skill-Update Agent</b><br/>(prompt driven by record status = <i>Approved</i>):<br/>directly updates the Business Skill<br/>record in Dataverse"]
+    end
+
+    UPDATED[("Updated Business Skill<br/>in Dataverse")]
+
+    A --> C
+    B --> C
+    C --> D
+    E --> F
+    F -- Yes --> I
+    F -- No --> G
+    G --> H
+    H -- Yes --> I
+    H -- No --> NOREVIEW
+    I --> J
+    J -- Accept --> ACCEPT
+    J -- Reject --> K
+    K --> L
+    L --> M
+    M --> N
+    N -- No --> M
+    N -- Yes --> O
+    O --> UPDATED
+    UPDATED -. "subsequent runs pick up<br/>improved skills" .-> G
+          </pre>
+        </div>
+        <div class="callout">
+          <strong>Steps 8 and 10 are the same Power Automate workflow invoking the same Skill-Update Agent.</strong>
+          The workflow fires on changes to the Skill Update Request record and selects the agent's
+          prompt based on the record's <em>status</em>: a <em>New</em> request prompts the agent to
+          <strong>recommend</strong> a fix; an <em>Approved</em> request prompts it to
+          <strong>apply</strong> the fix to the live Business Skill.
+        </div>
+      </div>
+    </section>
+
+    <!-- SKILL LOOP / TWO HALVES -->
+    <section id="loop">
+      <div class="wrap">
+        <div class="kicker">Architecture at a glance</div>
+        <h2>The two halves of the solution</h2>
+        <p class="section-intro">
+          The app owns the human side of the loop. The agent skills own the AI side. They meet at
+          Dataverse — the app sets a status and consumes what the agent writes back.
+        </p>
+        <div class="halves">
+          <div class="panel">
+            <h3>The Code App <span class="pill">src/</span></h3>
+            <p style="color:var(--cp-text-muted); margin:6px 0 0;">
+              Upload, the random review draw, the dynamic field editor, the human review loop, and
+              the Skill Update Request lifecycle UI. Bound to Dataverse.
+            </p>
+            <ul class="clean">
+              <li><strong>Owns:</strong> upload, draw, review, skill-update UI</li>
+              <li><strong>Does <em>not</em></strong> read or extract document content</li>
+              <li>Hands off by setting <code>Processing Status = Queued</code></li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3>The Agent Skills <span class="pill">agent/</span></h3>
+            <p style="color:var(--cp-text-muted); margin:6px 0 0;">
+              Natural-language <strong>business skills</strong> that AI agents discover and follow
+              at runtime, driving the Dataverse MCP server.
+            </p>
+            <ul class="clean">
+              <li><strong>document-extraction</strong> — read file, extract JSON, classify type</li>
+              <li><strong>review-flagging</strong> — the policy that decides if review is needed <em>(the skill the loop edits)</em></li>
+              <li><strong>review-skill-editor</strong> — recommends, then applies, edits to the flagging skill</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DATA MODEL -->
+    <section id="data">
+      <div class="wrap">
+        <div class="kicker">Dataverse</div>
+        <h2>Data model</h2>
+        <p class="section-intro">
+          Four user-owned tables in the <strong>HITL Skill Update</strong> solution (publisher
+          prefix <code>msfthitl_</code>). The <code>Document</code> record is the spine; the
+          <code>Skill Update Request</code> is the bridge from the app to the agent skills.
+        </p>
+
+        <h3 style="margin-bottom:10px;">Document — the central record</h3>
+        <div class="table-scroll" style="margin-bottom:28px;">
+          <table>
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Set by</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Source File</strong></td><td>File</td><td>App</td><td>Original PDF/JPG/PNG (≈32 MB cap).</td></tr>
+              <tr><td><strong>Document Number</strong></td><td>AutoNumber</td><td>Dataverse</td><td><code>DOC-2026-00001</code> — how agents reference the record.</td></tr>
+              <tr><td><strong>Document Type</strong></td><td>Lookup</td><td>Agent</td><td>Empty at upload; classified during processing.</td></tr>
+              <tr><td><strong>Processing Status</strong></td><td>Choice</td><td>App → agent</td><td><code>Uploaded → Queued → Processing → Processed → Failed</code>.</td></tr>
+              <tr><td><strong>Extracted Data</strong></td><td>Memo (JSON)</td><td>Agent ↔ Reviewer</td><td>Schema-less JSON edited via the Dynamic Field Editor — never shown raw.</td></tr>
+              <tr><td><strong>Random Draw Value</strong></td><td>Whole number</td><td>App</td><td>Integer drawn at create, captured for audit.</td></tr>
+              <tr><td><strong>Flagged For Review</strong></td><td>Yes/No</td><td>App / Agent</td><td>True when the draw hits the Trigger Value, or a rule matches.</td></tr>
+              <tr><td><strong>Review Status</strong></td><td>Choice</td><td>App</td><td><code>Not Required → Pending → In Review → Approved → Rejected</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 style="margin-bottom:10px;">Skill Update Request — the feedback record</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Skill Update Number</strong></td><td>AutoNumber</td><td><code>SUR-2026-00001</code>.</td></tr>
+              <tr><td><strong>Document</strong></td><td>Lookup</td><td>The rejected document that triggered it.</td></tr>
+              <tr><td><strong>Suggested Fix</strong></td><td>Memo</td><td>Reviewer's plain-language description of what the agent should do better.</td></tr>
+              <tr><td><strong>Agent Recommendation</strong></td><td>Memo</td><td>The agent's concrete proposed edit, generated from the Suggested Fix.</td></tr>
+              <tr><td><strong>Skill Update Status</strong></td><td>Choice</td><td><code>New → In Progress → Completed / Dismissed</code>; <strong>Approved — Implement</strong> is the go-ahead to apply.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="chips" style="margin-top:18px;">
+          <span class="chip">Also: <b>Document Type</b> catalog</span>
+          <span class="chip"><b>Review Settings</b> (draw range + trigger)</span>
+          <span class="chip">Roles: <b>Uploader / Reviewer / Admin</b></span>
+          <span class="chip">Choice base <b>720670000</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCREENS -->
+    <section id="screens">
+      <div class="wrap">
+        <div class="kicker">The app</div>
+        <h2>Screens</h2>
+        <p class="section-intro">
+          Six role-aware screens. The centerpiece is the <strong>Dynamic Field Editor</strong>,
+          which infers Fluent UI controls from each document's JSON shape — so the raw JSON is
+          never shown to a reviewer.
+        </p>
+        <div class="screens">
+          <div class="screen"><span class="aud">All</span><h4>Dashboard</h4><p>Counts by processing status, review backlog, recent uploads.</p></div>
+          <div class="screen"><span class="aud">Uploader</span><h4>Documents</h4><p>List, filters, and Upload — which runs the random draw and sets <code>Queued</code>.</p></div>
+          <div class="screen"><span class="aud">All</span><h4>Document Detail</h4><p>Source-file viewer, status, and the Dynamic Field Editor (read-only unless reviewing).</p></div>
+          <div class="screen"><span class="aud">Reviewer</span><h4>Review Queue</h4><p>Flagged, processed, and pending docs. Correct data, Approve, or Reject with Comments.</p></div>
+          <div class="screen"><span class="aud">Reviewer / Admin</span><h4>Skill Updates</h4><p>The feedback lifecycle — requests, the agent's recommendation, and status tracking.</p></div>
+          <div class="screen"><span class="aud">Admin</span><h4>Admin Settings</h4><p>Edit Review Settings (draw range + trigger) and manage Document Types.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        <div>HITL Skill Improvement · Power Apps Code App · Human-in-the-Loop document review</div>
+        <div><a href="https://github.com/martycarreras-psnl/hitlskillupdate" target="_blank" rel="noopener">github.com/martycarreras-psnl/hitlskillupdate</a></div>
+      </div>
+    </footer>
+
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+      function mermaidTheme() {
+        return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "neutral";
+      }
+
+      function renderMermaid() {
+        // Re-init then render the (single) diagram. Keep the source so we can re-render on theme switch.
+        const el = document.querySelector(".mermaid");
+        if (!el) return;
+        if (!el.dataset.src) el.dataset.src = el.textContent;
+        el.removeAttribute("data-processed");
+        el.innerHTML = el.dataset.src;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: mermaidTheme(),
+          securityLevel: "loose",
+          flowchart: { htmlLabels: true, curve: "basis", useMaxWidth: true },
+          themeVariables: {
+            fontFamily: '"Segoe UI", Aptos, Calibri, sans-serif',
+            primaryColor: getCss("--cp-accent-soft"),
+            primaryBorderColor: getCss("--cp-accent"),
+            primaryTextColor: getCss("--cp-text"),
+            lineColor: getCss("--cp-border-strong"),
+            secondaryColor: getCss("--cp-surface-soft"),
+            tertiaryColor: getCss("--cp-bg-elevated"),
+          },
+        });
+        mermaid.run({ nodes: [el] });
+      }
+
+      function getCss(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      }
+
+      // Theme toggle
+      const toggle = document.getElementById("themeToggle");
+      toggle.addEventListener("click", () => {
+        const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("hitl-theme", next);
+        renderMermaid();
+      });
+
+      renderMermaid();
+    </script>
+  </body>
+</html>
