@@ -1,7 +1,9 @@
 // Source File viewer. Resolves the stored file via the provider's getSourceFileUrl
 // (mock returns a sample asset; real returns the Dataverse File-column download URL)
-// and renders images inline and PDFs via <object> with a graceful download fallback.
+// and renders images inline; PDFs render to <canvas> via a lazily-loaded PDF.js
+// viewer (keeps pdf.js out of the main bundle), with a download fallback.
 
+import { Suspense, lazy } from 'react';
 import {
   Button,
   Card,
@@ -13,7 +15,11 @@ import {
 import { Open16Regular } from '@fluentui/react-icons';
 import { useSourceFileUrl } from '@/hooks/useDocuments';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
-import { PdfCanvasViewer } from '@/components/PdfCanvasViewer';
+
+// pdf.js is ~350 KB gzipped; load it only when a PDF is actually viewed.
+const PdfCanvasViewer = lazy(() =>
+  import('@/components/PdfCanvasViewer').then((m) => ({ default: m.PdfCanvasViewer })),
+);
 
 const useStyles = makeStyles({
   card: {
@@ -80,7 +86,9 @@ export function SourceFileViewer({ documentId }: { documentId: string }) {
         <img className={styles.image} src={data.url} alt={data.fileName} />
       ) : isPdf ? (
         <>
-          <PdfCanvasViewer url={data.url} fileName={data.fileName} />
+          <Suspense fallback={<LoadingState label="Loading PDF viewer…" />}>
+            <PdfCanvasViewer url={data.url} fileName={data.fileName} />
+          </Suspense>
           <div className={styles.fallback}>
             <Link href={data.url} download={data.fileName}>
               Download {data.fileName}

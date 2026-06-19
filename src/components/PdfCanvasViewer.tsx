@@ -7,11 +7,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Text, makeStyles, tokens } from '@fluentui/react-components';
 import * as pdfjsLib from 'pdfjs-dist';
-// Vite resolves this to a same-origin URL, satisfying the host's worker-src 'self'.
-import PdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { LoadingState } from '@/components/EmptyState';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = PdfWorkerUrl;
+// The deployed Power Apps host enforces `worker-src 'none'`, so PDF.js can't
+// spawn a real Worker — it falls back to its main-thread "fake worker", which
+// dynamically imports this script. We point it at a same-origin `.js` asset
+// (copied into public/ by scripts/copy-pdf-worker.mjs) referenced by an
+// absolute URL so the import resolves under `script-src 'self'` with the
+// correct `text/javascript` MIME. (A bundled `.mjs` is served as
+// octet-stream by the host and rejected by strict module-MIME checks.)
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdf.worker.min.js',
+  document.baseURI,
+).href;
 
 const useStyles = makeStyles({
   root: {
