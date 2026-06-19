@@ -13,6 +13,15 @@ export default defineConfig({
     setupFiles: ['./tests/setup/setup.ts'],
     css: true,
     include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
+    // The @microsoft/power-apps SDK ships ESM with extensionless internal imports
+    // that Node/vitest can't resolve from node_modules without transforming it.
+    // Inlining lets Vite's resolver process it so the real provider's import chain
+    // loads under jsdom (tests still run on the mock provider).
+    server: {
+      deps: {
+        inline: ['@microsoft/power-apps'],
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],

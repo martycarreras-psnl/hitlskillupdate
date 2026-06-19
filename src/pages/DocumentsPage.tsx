@@ -93,8 +93,7 @@ export function DocumentsPage() {
     if (!file) return;
 
     const created = await createDocument.mutateAsync({
-      fileName: file.name,
-      mimeType: file.type || 'application/octet-stream',
+      file,
     });
 
     dispatchToast(

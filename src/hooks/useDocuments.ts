@@ -72,8 +72,7 @@ export function useSkillUpdateRequests() {
 // ── Mutations ────────────────────────────────────────────────────────────────
 
 export interface UploadDocumentInput {
-  fileName: string;
-  mimeType: string;
+  file: File;
 }
 
 /**
@@ -84,13 +83,14 @@ export interface UploadDocumentInput {
 export function useCreateDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ fileName, mimeType }: UploadDocumentInput) => {
+    mutationFn: async ({ file }: UploadDocumentInput) => {
       const settings = await provider.reviewSettings.get();
       const draw = computeReviewDraw(settings);
       return provider.documents.create({
-        documentName: fileName,
-        sourceFileName: fileName,
-        sourceFileMimeType: mimeType,
+        documentName: file.name,
+        sourceFileName: file.name,
+        sourceFileMimeType: file.type || 'application/octet-stream',
+        sourceFile: file,
         randomDrawValue: draw.randomDrawValue,
         flaggedForReview: draw.flaggedForReview,
         reviewStatus: draw.reviewStatus,

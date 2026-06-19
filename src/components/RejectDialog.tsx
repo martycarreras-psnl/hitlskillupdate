@@ -11,10 +11,15 @@ import {
   DialogContent,
   DialogSurface,
   DialogTitle,
-  Field,
   Spinner,
+  Text,
   Textarea,
+  tokens,
 } from '@fluentui/react-components';
+import { DataverseFieldLabel, useDataverseFieldRequired } from '@/components/DataverseFieldLabel';
+
+const SKILL_UPDATE_TABLE = 'msfthitl_skillupdaterequest';
+const SUGGESTED_FIX_FIELD = 'msfthitl_suggestedfix';
 
 export interface RejectDialogProps {
   open: boolean;
@@ -33,6 +38,7 @@ export function RejectDialog({
 }: RejectDialogProps) {
   const [text, setText] = useState('');
   const [showError, setShowError] = useState(false);
+  const suggestedFixRequired = useDataverseFieldRequired(SKILL_UPDATE_TABLE, SUGGESTED_FIX_FIELD, true);
 
   // Reset the field each time the dialog opens.
   useEffect(() => {
@@ -56,24 +62,32 @@ export function RejectDialog({
         <DialogBody>
           <DialogTitle>Reject &amp; suggest a skill update</DialogTitle>
           <DialogContent>
-            <Field
-              label={`What should be improved in the agent's skill so it handles documents like "${documentName}" correctly?`}
-              required
-              validationState={showError ? 'error' : 'none'}
-              validationMessage={showError ? 'A suggested fix is required to reject.' : undefined}
-            >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
+              <DataverseFieldLabel
+                required={suggestedFixRequired}
+                htmlFor="suggested-fix"
+              >
+                {`What should be improved in the agent's skill so it handles documents like "${documentName}" correctly?`}
+              </DataverseFieldLabel>
               <Textarea
+                id="suggested-fix"
                 value={text}
                 placeholder="Describe what the agent skill got wrong and how it should change…"
                 resize="vertical"
                 rows={5}
                 aria-label="Suggested fix for the agent skill"
+                aria-required={suggestedFixRequired || undefined}
                 onChange={(_e, data) => {
                   setText(data.value);
                   if (data.value.trim()) setShowError(false);
                 }}
               />
-            </Field>
+              {showError ? (
+                <Text style={{ color: tokens.colorPaletteRedForeground1 }}>
+                  A suggested fix is required to reject.
+                </Text>
+              ) : null}
+            </div>
           </DialogContent>
           <DialogActions>
             <Button appearance="secondary" disabled={submitting} onClick={onCancel}>

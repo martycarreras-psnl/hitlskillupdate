@@ -32,6 +32,8 @@ export interface CreateDocumentInput {
   documentName: string;
   sourceFileName?: string;
   sourceFileMimeType?: string;
+  /** The uploaded binary, stored in the Dataverse File column by the real provider. */
+  sourceFile?: File;
   randomDrawValue: number;
   flaggedForReview: boolean;
   reviewStatus: DocumentRecord['reviewStatus'];

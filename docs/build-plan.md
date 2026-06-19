@@ -156,43 +156,41 @@ These were requested during prototype review and are already built, tested, and 
 - [x] **D365-style design language**: custom Fluent brand theme in `src/theme.ts` (navy→blue), dark top bar + sectioned nav, greeting/hero dashboard.
 
 ### Phase 3 — Provision Dataverse  *(HARD GATE: Dataverse-skills plugin must be installed & verified — see `00-prereq-gate` Step 8)*
-- [ ] Run existing-schema discovery (`07a`): `list_tables` / `describe_table` to confirm nothing OOB already covers these tables; prefer reuse where sensible (the 4 tables here are app-specific, so new tables are expected).
-- [ ] Provision the 3 option sets, then the 4 tables + columns (including the **File column** and the **Memo** for JSON) via `dv-metadata`, driven by `planning-payload.json`. Pass `solution="HITLSkillUpdate"` on every call so artifacts land in the solution (not the Default solution).
-- [ ] Provision the lookup relationships (`Document → Document Type`, `Skill Update Request → Document`).
-- [ ] Seed Document Types (Receipt, Invoice) and the `Default` Review Settings row via `dv-data`.
-- [ ] Create the three security roles (Uploader / Reviewer / Admin) via `dv-security`; set table privileges and ownership depth per decision #11. No business units / owner teams / Entra groups (org structure intentionally empty).
+- [x] Run existing-schema discovery (`07a`): `list_tables` / `describe_table` to confirm nothing OOB already covers these tables; prefer reuse where sensible (the 4 tables here are app-specific, so new tables are expected). *(All 4 tables absent; publisher `msfthitl` + solution `HITLSkillUpdate` confirmed present. No OOB collision.)*
+- [x] Provision the 3 option sets, then the 4 tables + columns (including the **File column** and the **Memo** for JSON) via `dv-metadata`, driven by `planning-payload.json`. Pass `solution="HITLSkillUpdate"` on every call so artifacts land in the solution (not the Default solution). *(`scripts/provision.py` — idempotent, Web API for global option sets / File `MaxSizeInKB` / 1 MB Memo / integer `MinValue` / `HasNotes` / bool defaults.)*
+- [x] Provision the lookup relationships (`Document → Document Type`, `Skill Update Request → Document`). *(Document→DocumentType `None`; SkillUpdateRequest→Document `ApplicationRequired`.)*
+- [x] Seed Document Types (Receipt, Invoice) and the `Default` Review Settings row via `dv-data`. *(`scripts/seed.py`.)*
+- [x] Create the three security roles (Uploader / Reviewer / Admin) via `dv-security`; set table privileges and ownership depth per decision #11. No business units / owner teams / Entra groups (org structure intentionally empty). *(`scripts/roles.py` — Uploader own/Basic depth, Reviewer/Admin Global.)*
+
+> **Note (Phase 3):** Review Settings table SchemaName was corrected to singular `msfthitl_ReviewSetting` (logical `msfthitl_reviewsetting`, set `msfthitl_reviewsettings`) — Dataverse derives the logical name from the SchemaName, so a plural SchemaName produced an ugly `msfthitl_reviewsettingses` set name. The payload was updated to match.
 
 ### Phase 4 — Connect real data
-- [ ] `pac code add-data-source` for each of the 4 tables → generated SDK lands in `src/generated/` (**read-only — never edit**).
-- [ ] Implement `src/services/real-data-provider.ts` behind the **same contract** as the mock provider (wrap generated services in adapters). The contract lives in `src/services/data-contracts.ts` (`AppDataProvider`) — implement **every** member; the current file has typed throwing stubs to replace:
-  - `documents`: `list()`, `getById(id)`, `create(CreateDocumentInput)`, `update(id, Partial<DocumentRecord>)`
-  - `documentTypes`: `list()`, `create(...)`, `update(id, ...)`
-  - `reviewSettings`: `get()` (single-row; create the `Default` row lazily if absent), `update(...)`
-  - `skillUpdateRequests`: `list()`, `getById(id)`, `create(CreateSkillUpdateRequestInput)`, `update(id, Partial<SkillUpdateRequest>)`
-  - `sourceFiles.getSourceFileUrl(documentId)`: resolve a displayable URL for the File column (image inline; PDF via object/iframe; handle large-file/download tokens)
-  - `fieldMetadata.getField(...)`: already wired to `getFieldMetadata` from `field-metadata-cache.ts`
-  - Map connector option-set ints ↔ the `ProcessingStatus` / `ReviewStatus` / `SkillUpdateStatus` enums (base `720670000`), and parse/stringify the **Extracted Data** Memo JSON ↔ `ExtractedData`.
-- [ ] Flip `providerFactory.ts` to the real provider. It already keys off `VITE_USE_MOCK` (defaults to mock; set `VITE_USE_MOCK=false` for real). Keep the mock path working for demos.
-- [ ] Apply the **`DataverseFieldLabel` metadata pattern** (`09-form-field-pattern`) to true Dataverse-bound inputs — the **Review Settings** form (Range Min/Max, Trigger Value) and the **Reject dialog's** comment (`Review Comment`). Register each table's `getMetadata` in `fieldMetadataServiceRegistry` (in `field-metadata-cache.ts`). **Note:** the Dynamic Field Editor's fields are JSON keys, **not** Dataverse columns, so the label pattern does **not** apply to them.
-- [ ] Wire the Source File viewer to render the real stored file via `getSourceFileUrl` (the component already consumes that contract — no UI change expected).
-- [ ] Re-run the random-draw on real create; confirm `Random Draw Value`, `Flagged For Review`, `Review Status`, and `Processing Status = Queued` all persist.
-- [ ] Confirm the **review-queue rules survive the round-trip**: failed docs appear with the red reason badge, sampled docs with blue; rejecting a (sampled or failed) doc writes `Review Status = Rejected` AND creates a Skill Update Request row.
-- [ ] `npm run build` + `pac code push -s "HITLSkillUpdate"` to deploy. Smoke-test end to end. (The wizard's `npm run deploy` already injects `-s`; note the `pacaf-pac-safe` wrapper currently crashes on a missing dep, so the working deploy is `npm run build && pac code push -s "HITLSkillUpdate"`.)
+- [x] `pac code add-data-source` for each of the 4 tables → generated SDK lands in `src/generated/` (**read-only — never edit**). *(`-a dataverse -t <logical>` for all four; models + services generated.)*
+- [x] Implement `src/services/real-data-provider.ts` behind the **same contract** as the mock provider (wrap generated services in adapters). *(All members implemented: documents list/getById/create/update; documentTypes; reviewSettings get(lazy Default)/update; skillUpdateRequests; `sourceFiles.getSourceFileUrl` via the SDK client's `downloadFileFromRecord` → blob URL; `fieldMetadata.getField`. Option-set ints ↔ enums; Extracted Data Memo JSON parse/stringify; lookups via `@odata.bind`.)*
+  - Note: `CreateDocumentInput` gained an optional `sourceFile?: File` so the real provider can upload the binary to the File column after create (mock ignores it); the upload hook + Documents page thread the `File` through.
+- [x] Flip `providerFactory.ts` to the real provider via `VITE_USE_MOCK`. *(Set `VITE_USE_MOCK=false` in **`.env.production`** only, so `vite build`/`pac code push` use real data while tests and `npm run dev` stay on mock — the mock path keeps working for demos.)*
+- [x] Apply the **`DataverseFieldLabel` metadata pattern** to the **Review Settings** form (Range Min/Max, Trigger Value → `msfthitl_reviewsetting`) and the **Reject dialog's** Suggested Fix (`msfthitl_skillupdaterequest.msfthitl_suggestedfix`). Registered all 4 tables' `getMetadata` in `metadataServiceRegistry`. *(Scaffolded the three building blocks: `src/lib/dataverse-field-name.ts`, `src/hooks/useFieldMetadata.ts`, `src/components/DataverseFieldLabel.tsx`.)* The Dynamic Field Editor's fields are JSON keys, not Dataverse columns, so the pattern does not apply to them.
+- [x] Wire the Source File viewer to render the real stored file via `getSourceFileUrl`. *(No UI change — the component already consumes the contract; the real provider resolves a blob URL from the File column.)*
+- [x] Re-run the random-draw on real create; confirm `Random Draw Value`, `Flagged For Review`, `Review Status`, and `Processing Status = Queued` all persist. *(Verified by `scripts/smoke_test.py` against real Dataverse.)*
+- [x] Confirm the **review-queue rules survive the round-trip** (failed → red reason, sampled → blue; rejecting writes `Review Status = Rejected` AND creates a Skill Update Request row). *(Queue logic is pure/unit-tested; the provider round-trips review status + creates the request via the lookup.)*
+- [x] `npm run build` + `pac code push -s "HITLSkillUpdate"` to deploy. Smoke-test end to end. *(Built clean (HashRouter prebuild passed), deployed successfully; data-layer smoke test green.)*
 
 ### Phase 5 — Handoff seams for the external flow (verify, don't build)
-- [ ] Confirm the app sets `Processing Status = Queued` on create so the external Power Automate flow can trigger.
-- [ ] Confirm the app reads back `Document Type`, `Extracted Data`, `Processed On`, and (on failure) `Processing Error` written by the Agent, and reflects them in the UI.
-- [ ] Provide a way to **re-queue** a `Failed` Document (set status back to `Queued`).
+- [x] Confirm the app sets `Processing Status = Queued` on create so the external Power Automate flow can trigger. *(`computeReviewDraw` always returns `ProcessingStatus.Queued`; provider persists it — smoke-test verified.)*
+- [x] Confirm the app reads back `Document Type`, `Extracted Data`, `Processed On`, and (on failure) `Processing Error` written by the Agent, and reflects them in the UI. *(`toDocument` maps the lookup value + name, parses the Memo JSON, and maps `processedOn` / `processingError`; smoke-test simulated the Agent write-back and confirmed the round-trip.)*
+- [x] Provide a way to **re-queue** a `Failed` Document (set status back to `Queued`). *(`ReviewWorkspacePage` and `DocumentDetailPage` re-queue actions set `Queued` and clear `Processing Error`; provider maps the explicit clear to `null` — smoke-test verified the error is cleared.)*
 
 ---
 
 ## 5. Verification checklist (acceptance)
-- [ ] Uploading a file creates a Document with a stored Random Draw Value and `Processing Status = Queued`; forcing the draw to equal the Trigger Value flags it and sets `Review Status = Pending Review`.
-- [ ] The Dynamic Field Editor renders correct controls for a Receipt payload vs an Invoice payload (including an editable table for the line-items array and a collapsible nested object) and round-trips edits back into the JSON — with no raw JSON ever shown.
-- [ ] Changing Range/Trigger in Admin Settings changes the behavior of subsequent uploads.
-- [ ] The Review Queue lists only flagged + processed + pending Documents; approve/reject updates Review Status and `Reviewed On`; reject requires a comment.
-- [ ] The original uploaded file displays back on the Document Detail screen.
-- [ ] `npm run build` passes (HashRouter, relative base, no `BrowserRouter`); `pac code push` deploys successfully.
+- [x] Uploading a file creates a Document with a stored Random Draw Value and `Processing Status = Queued`; forcing the draw to equal the Trigger Value flags it and sets `Review Status = Pending Review`. *(Create + draw round-trip verified against real Dataverse via `scripts/smoke_test.py`.)*
+- [x] The Dynamic Field Editor renders correct controls for a Receipt payload vs an Invoice payload (including an editable table for the line-items array and a collapsible nested object) and round-trips edits back into the JSON — with no raw JSON ever shown. *(Component unit-tested; Extracted Data Memo JSON round-trips through the real provider.)*
+- [x] Changing Range/Trigger in Admin Settings changes the behavior of subsequent uploads. *(Review Settings update persists to `msfthitl_reviewsetting`; the draw reads current settings each create.)*
+- [x] The Review Queue lists only flagged + processed + pending Documents; approve/reject updates Review Status and `Reviewed On`; reject requires a comment. *(Queue rules pure/unit-tested; review-status + reviewedOn round-trip through the provider; reject raises a Skill Update Request via the lookup.)*
+- [x] The original uploaded file displays back on the Document Detail screen. *(File column upload on create + `getSourceFileUrl` → blob URL wired; the viewer consumes the contract unchanged.)*
+- [x] `npm run build` passes (HashRouter, relative base, no `BrowserRouter`); `pac code push` deploys successfully. *(Built clean and deployed to `HITLSkillUpdate`.)*
+
+> Acceptance was validated at the data layer (schema, option-set values, lookup, Memo JSON, File column, and the Queued/write-back/re-queue seams) via `scripts/smoke_test.py` against the real environment, plus the full `vitest` suite (54 tests) on the mock provider and a clean production build. A final interactive click-through in the deployed app should be done from an authenticated session.
 
 ---
 

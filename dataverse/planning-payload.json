@@ -223,13 +223,13 @@
       ]
     },
     {
-      "schemaName": "msfthitl_ReviewSettings",
+      "schemaName": "msfthitl_ReviewSetting",
       "displayName": "Review Settings",
       "displayCollectionName": "Review Settings",
       "logicalSingularName": "msfthitl_reviewsetting",
       "logicalPluralName": "msfthitl_reviewsettings",
       "entitySetName": "msfthitl_reviewsettings",
-      "tableLogicalName": "msfthitl_reviewsettings",
+      "tableLogicalName": "msfthitl_reviewsetting",
       "description": "Single-row configuration for the random review draw. Edited by an Admin in-app at runtime.",
       "ownership": "UserOwned",
       "ownershipType": "UserOwned",

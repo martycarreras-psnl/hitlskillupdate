@@ -37,6 +37,41 @@ import {
 } from '@/hooks/useDocuments';
 import { validateReviewSettings } from '@/utils/randomDraw';
 import { LoadingState } from '@/components/EmptyState';
+import { DataverseFieldLabel, useDataverseFieldRequired } from '@/components/DataverseFieldLabel';
+
+const REVIEW_SETTINGS_TABLE = 'msfthitl_reviewsetting';
+
+function ReviewNumberField({
+  field,
+  fallback,
+  value,
+  onChange,
+}: {
+  field: string;
+  fallback: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const required = useDataverseFieldRequired(REVIEW_SETTINGS_TABLE, field, true);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS, width: '160px' }}>
+      <DataverseFieldLabel
+        tableLogicalName={REVIEW_SETTINGS_TABLE}
+        fieldLogicalName={field}
+        fallback={fallback}
+        htmlFor={field}
+      />
+      <Input
+        id={field}
+        type="number"
+        min={1}
+        value={value}
+        aria-required={required || undefined}
+        onChange={(_e, d) => onChange(d.value)}
+      />
+    </div>
+  );
+}
 
 const useStyles = makeStyles({
   root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXL, maxWidth: '900px' },
@@ -110,15 +145,9 @@ export function AdminSettingsPage() {
         <Title3>Review Settings</Title3>
         <Card className={styles.card}>
           <div className={styles.numberRow}>
-            <Field label="Range Min" className={styles.numberField}>
-              <Input type="number" value={rangeMin} onChange={(_e, d) => setRangeMin(d.value)} />
-            </Field>
-            <Field label="Range Max" className={styles.numberField}>
-              <Input type="number" value={rangeMax} onChange={(_e, d) => setRangeMax(d.value)} />
-            </Field>
-            <Field label="Trigger Value" className={styles.numberField}>
-              <Input type="number" value={triggerValue} onChange={(_e, d) => setTriggerValue(d.value)} />
-            </Field>
+            <ReviewNumberField field="msfthitl_rangemin" fallback="Range Min" value={rangeMin} onChange={setRangeMin} />
+            <ReviewNumberField field="msfthitl_rangemax" fallback="Range Max" value={rangeMax} onChange={setRangeMax} />
+            <ReviewNumberField field="msfthitl_triggervalue" fallback="Trigger Value" value={triggerValue} onChange={setTriggerValue} />
           </div>
 
           {errors.length > 0 ? (

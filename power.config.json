@@ -10,5 +10,27 @@
   "localAppUrl": "http://localhost:3000",
   "logoPath": "Default",
   "connectionReferences": {},
-  "databaseReferences": {}
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "documents": {
+          "entitySetName": "msfthitl_documents",
+          "logicalName": "msfthitl_document"
+        },
+        "documenttypes": {
+          "entitySetName": "msfthitl_documenttypes",
+          "logicalName": "msfthitl_documenttype"
+        },
+        "reviewsettings": {
+          "entitySetName": "msfthitl_reviewsettings",
+          "logicalName": "msfthitl_reviewsetting"
+        },
+        "skillupdaterequests": {
+          "entitySetName": "msfthitl_skillupdaterequests",
+          "logicalName": "msfthitl_skillupdaterequest"
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
 }

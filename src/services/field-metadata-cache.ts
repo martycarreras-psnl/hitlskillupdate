@@ -3,6 +3,10 @@
 // backed by the generated service getMetadata() call.
 
 import type { DataverseFieldMetadata, DataverseFieldRequiredLevel } from '@/services/data-contracts';
+import { Msfthitl_documentsService } from '@/generated/services/Msfthitl_documentsService';
+import { Msfthitl_documenttypesService } from '@/generated/services/Msfthitl_documenttypesService';
+import { Msfthitl_reviewsettingsService } from '@/generated/services/Msfthitl_reviewsettingsService';
+import { Msfthitl_skillupdaterequestsService } from '@/generated/services/Msfthitl_skillupdaterequestsService';
 
 // ── RequiredLevel mapping (handles both string names and numeric values) ──
 
@@ -36,10 +40,13 @@ interface MetadataServiceEntry {
 
 // Register each table's generated service here after pac code add-data-source.
 // Without an entry, metadata lookups for that table return null (no asterisks,
-// no maxLength, no min/max).
+// no maxLength, no min/max). Keys are the entity *logical* (singular) names the
+// app passes to DataverseFieldLabel.
 export const metadataServiceRegistry: Record<string, MetadataServiceEntry> = {
-  // Example after registering msfttrp_trips:
-  // msfttrp_trips: Msfttrp_tripsService as unknown as MetadataServiceEntry,
+  msfthitl_document: Msfthitl_documentsService as unknown as MetadataServiceEntry,
+  msfthitl_documenttype: Msfthitl_documenttypesService as unknown as MetadataServiceEntry,
+  msfthitl_reviewsetting: Msfthitl_reviewsettingsService as unknown as MetadataServiceEntry,
+  msfthitl_skillupdaterequest: Msfthitl_skillupdaterequestsService as unknown as MetadataServiceEntry,
 };
 
 const tableMetadataCache = new Map<string, Promise<Map<string, DataverseFieldMetadata>>>();
