@@ -1,9 +1,12 @@
-// Documents — filterable list of all documents plus the Upload action. Upload runs the
-// random review draw (via useCreateDocument), defaults the name to the file name, and
-// sets Processing Status = Queued for the external flow.
+// Documents — filterable list of all documents plus upload. Files can be added via the
+// Upload button OR by dragging and dropping one or more files onto the screen; each file
+// creates its own Document. Every upload runs the random review draw (via
+// useCreateDocument), defaults the name to the file name, and sets Processing Status =
+// Queued for the external flow.
 
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Badge,
   Button,
@@ -25,6 +28,7 @@ import {
   TableHeader,
   TableHeaderCell,
   TableRow,
+  Text,
   Title2,
   Toast,
   ToastTitle,
@@ -32,12 +36,14 @@ import {
   Toaster,
   Tooltip,
   makeStyles,
+  mergeClasses,
+  shorthands,
   tokens,
   useId,
   useToastController,
 } from '@fluentui/react-components';
 import { ArrowUpload24Regular, Delete24Regular } from '@fluentui/react-icons';
-import { useDocuments, useCreateDocument, useDeleteDocument } from '@/hooks/useDocuments';
+import { useDocuments, useCreateDocument, useDeleteDocument, queryKeys } from '@/hooks/useDocuments';
 import { ProcessingStatus } from '@/types/domain-models';
 import type { DocumentRecord } from '@/types/domain-models';
 import {
@@ -45,12 +51,13 @@ import {
   isAdmin,
   processingStatusLabels,
 } from '@/constants/status';
+import { partitionUploadableFiles } from '@/utils/fileUpload';
 import { useRole } from '@/hooks/useRole';
 import { ProcessingStatusBadge, ReviewStatusBadge } from '@/components/StatusBadge';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
 
 const useStyles = makeStyles({
-  root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL },
+  root: { display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalL, position: 'relative' },
   header: {
     display: 'flex',
     alignItems: 'center',
@@ -68,6 +75,44 @@ const useStyles = makeStyles({
   docNumber: { fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' },
   clickableRow: { cursor: 'pointer' },
   badges: { display: 'flex', gap: tokens.spacingHorizontalXS, alignItems: 'center' },
+
+  // Drop zone
+  dropZone: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spacingHorizontalS,
+    paddingTop: tokens.spacingVerticalM,
+    paddingBottom: tokens.spacingVerticalM,
+    borderRadius: tokens.borderRadiusLarge,
+    ...shorthands.border('2px', 'dashed', tokens.colorNeutralStroke2),
+    color: tokens.colorNeutralForeground3,
+    backgroundColor: tokens.colorNeutralBackground1,
+    cursor: 'pointer',
+    transitionProperty: 'border-color, background-color',
+    transitionDuration: '0.15s',
+  },
+  dropZoneActive: {
+    ...shorthands.borderColor(tokens.colorBrandStroke1),
+    backgroundColor: tokens.colorBrandBackground2,
+    color: tokens.colorBrandForeground1,
+  },
+  // Full-screen overlay shown while dragging files over the page.
+  dragOverlay: {
+    position: 'fixed',
+    inset: '0',
+    zIndex: 1000,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tokens.spacingVerticalS,
+    pointerEvents: 'none',
+    backgroundColor: 'rgba(15, 31, 61, 0.55)',
+    color: tokens.colorNeutralForegroundOnBrand,
+    fontSize: tokens.fontSizeBase600,
+    fontWeight: tokens.fontWeightSemibold,
+  },
 });
 
 export function DocumentsPage() {
@@ -76,6 +121,7 @@ export function DocumentsPage() {
   const { data: documents, isLoading } = useDocuments();
   const createDocument = useCreateDocument();
   const deleteDocument = useDeleteDocument();
+  const queryClient = useQueryClient();
   const { role } = useRole();
   const admin = isAdmin(role);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,6 +133,10 @@ export function DocumentsPage() {
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [search, setSearch] = useState('');
   const [pendingDelete, setPendingDelete] = useState<DocumentRecord | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  // Batch upload progress; null when no upload is in flight.
+  const [batch, setBatch] = useState<{ done: number; total: number } | null>(null);
+  const dragDepth = useRef(0);
 
   const filtered = useMemo(() => {
     return (documents ?? []).filter((doc) => {
@@ -108,29 +158,102 @@ export function DocumentsPage() {
     fileInputRef.current?.click();
   }
 
+  // Shared upload routine for both the file picker and drag-and-drop. Each accepted file
+  // creates its own Document (sequentially, so progress is visible and the mock store
+  // stays consistent). Single uploads navigate to the new record; batches stay on the list.
+  const uploadFiles = useCallback(
+    async (fileList: File[]) => {
+      const { accepted, rejected } = partitionUploadableFiles(fileList);
+
+      if (accepted.length === 0) {
+        dispatchToast(
+          <Toast>
+            <ToastTitle>No supported files</ToastTitle>
+            <ToastBody>Only PDFs and images can be uploaded.</ToastBody>
+          </Toast>,
+          { intent: 'error' },
+        );
+        return;
+      }
+
+      setBatch({ done: 0, total: accepted.length });
+      const created: DocumentRecord[] = [];
+      try {
+        for (const file of accepted) {
+          const doc = await createDocument.mutateAsync({ file });
+          created.push(doc);
+          setBatch((prev) => (prev ? { ...prev, done: prev.done + 1 } : prev));
+        }
+      } finally {
+        setBatch(null);
+      }
+
+      // Settle the list once after the whole batch so all new rows appear together
+      // (avoids a per-create refetch race that can lag the last row by one fetch).
+      await queryClient.invalidateQueries({ queryKey: queryKeys.documents });
+
+      const flaggedCount = created.filter((d) => d.flaggedForReview).length;
+
+      if (created.length === 1 && rejected.length === 0) {
+        const only = created[0];
+        dispatchToast(
+          <Toast>
+            <ToastTitle>Document uploaded</ToastTitle>
+            <ToastBody>
+              Drew {only.randomDrawValue}.{' '}
+              {only.flaggedForReview
+                ? 'Matched the Trigger Value — flagged for review.'
+                : 'Not flagged. Queued for processing.'}
+            </ToastBody>
+          </Toast>,
+          { intent: only.flaggedForReview ? 'warning' : 'success' },
+        );
+        navigate(`/documents/${only.id}`);
+        return;
+      }
+
+      dispatchToast(
+        <Toast>
+          <ToastTitle>
+            {created.length} document{created.length === 1 ? '' : 's'} uploaded
+          </ToastTitle>
+          <ToastBody>
+            {flaggedCount > 0 ? `${flaggedCount} flagged for review. ` : 'None flagged. '}
+            Queued for processing.
+            {rejected.length > 0
+              ? ` Skipped ${rejected.length} unsupported file${rejected.length === 1 ? '' : 's'}.`
+              : ''}
+          </ToastBody>
+        </Toast>,
+        { intent: flaggedCount > 0 ? 'warning' : 'success' },
+      );
+    },
+    [createDocument, dispatchToast, navigate, queryClient],
+  );
+
   async function onFileSelected(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = ''; // allow re-selecting the same file
-    if (!file) return;
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = ''; // allow re-selecting the same file(s)
+    if (files.length > 0) await uploadFiles(files);
+  }
 
-    const created = await createDocument.mutateAsync({
-      file,
-    });
+  function onDragEnter(event: React.DragEvent) {
+    if (!Array.from(event.dataTransfer.types).includes('Files')) return;
+    dragDepth.current += 1;
+    setIsDragging(true);
+  }
 
-    dispatchToast(
-      <Toast>
-        <ToastTitle>Document uploaded</ToastTitle>
-        <ToastBody>
-          Drew {created.randomDrawValue}.{' '}
-          {created.flaggedForReview
-            ? 'Matched the Trigger Value — flagged for review.'
-            : 'Not flagged. Queued for processing.'}
-        </ToastBody>
-      </Toast>,
-      { intent: created.flaggedForReview ? 'warning' : 'success' },
-    );
+  function onDragLeave() {
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setIsDragging(false);
+  }
 
-    navigate(`/documents/${created.id}`);
+  async function onDrop(event: React.DragEvent) {
+    event.preventDefault();
+    dragDepth.current = 0;
+    setIsDragging(false);
+    const files = Array.from(event.dataTransfer.files ?? []);
+    if (files.length > 0) await uploadFiles(files);
   }
 
   async function confirmDelete() {
@@ -147,27 +270,53 @@ export function DocumentsPage() {
   }
 
   return (
-    <div className={styles.root}>
+    <div
+      className={styles.root}
+      onDragEnter={onDragEnter}
+      onDragOver={(e) => {
+        if (Array.from(e.dataTransfer.types).includes('Files')) e.preventDefault();
+      }}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <Toaster toasterId={toasterId} />
       <input
         ref={fileInputRef}
         type="file"
         accept=".pdf,image/*"
+        multiple
         hidden
         onChange={onFileSelected}
-        aria-label="Upload document file"
+        aria-label="Upload document files"
       />
 
       <div className={styles.header}>
         <Title2>Documents</Title2>
         <Button
           appearance="primary"
-          icon={createDocument.isPending ? <Spinner size="tiny" /> : <ArrowUpload24Regular />}
-          disabled={createDocument.isPending}
+          icon={batch ? <Spinner size="tiny" /> : <ArrowUpload24Regular />}
+          disabled={batch !== null}
           onClick={onPickFile}
         >
-          Upload document
+          {batch ? `Uploading ${batch.done}/${batch.total}…` : 'Upload documents'}
         </Button>
+      </div>
+
+      <div
+        className={mergeClasses(styles.dropZone, isDragging && styles.dropZoneActive)}
+        role="button"
+        tabIndex={0}
+        onClick={onPickFile}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') onPickFile();
+        }}
+      >
+        <ArrowUpload24Regular />
+        <Text>
+          {batch
+            ? `Uploading ${batch.done} of ${batch.total}…`
+            : 'Drag & drop files here, or click to browse — each file becomes its own document'}
+        </Text>
       </div>
 
       <div className={styles.filters}>
@@ -297,6 +446,13 @@ export function DocumentsPage() {
           </DialogBody>
         </DialogSurface>
       </Dialog>
+
+      {isDragging ? (
+        <div className={styles.dragOverlay} aria-hidden>
+          <ArrowUpload24Regular />
+          <span>Drop files to upload — one document per file</span>
+        </div>
+      ) : null}
     </div>
   );
 }
