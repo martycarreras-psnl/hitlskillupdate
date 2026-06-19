@@ -25,7 +25,7 @@ import {
   tokens,
 } from '@fluentui/react-components';
 import { MoreHorizontal20Regular } from '@fluentui/react-icons';
-import { useSkillUpdateRequests, useUpdateSkillUpdateRequest } from '@/hooks/useDocuments';
+import { useDocuments, useSkillUpdateRequests, useUpdateSkillUpdateRequest } from '@/hooks/useDocuments';
 import { SkillUpdateStatus } from '@/types/domain-models';
 import { ALL_SKILL_UPDATE_STATUSES, skillUpdateStatusLabels } from '@/constants/status';
 import { SkillUpdateStatusBadge } from '@/components/StatusBadge';
@@ -44,6 +44,8 @@ const useStyles = makeStyles({
   filters: { display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM, flexWrap: 'wrap' },
   fix: { color: tokens.colorNeutralForeground2 },
   number: { fontFamily: tokens.fontFamilyMonospace, whiteSpace: 'nowrap' },
+  docCell: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 },
+  docNumber: { fontFamily: tokens.fontFamilyMonospace, fontSize: tokens.fontSizeBase200, color: tokens.colorNeutralForeground3 },
   docLink: { cursor: 'pointer' },
 });
 
@@ -62,10 +64,21 @@ function formatDate(value?: string): string {
 export function SkillUpdatesPage() {
   const styles = useStyles();
   const { data: requests, isLoading } = useSkillUpdateRequests();
+  const { data: documents } = useDocuments();
   const updateRequest = useUpdateSkillUpdateRequest();
 
   const [statusFilter, setStatusFilter] = useState<'all' | SkillUpdateStatus>('all');
   const [previewDocId, setPreviewDocId] = useState<string | null>(null);
+
+  // Resolve the linked Document's friendly number/name from the documents list so the
+  // table never shows a raw GUID (the lookup's formatted name isn't always returned).
+  const documentsById = useMemo(() => {
+    const map = new Map<string, { number?: string; name: string }>();
+    for (const doc of documents ?? []) {
+      map.set(doc.id, { number: doc.documentNumber, name: doc.documentName });
+    }
+    return map;
+  }, [documents]);
 
   const filtered = useMemo(
     () =>
@@ -136,14 +149,25 @@ export function SkillUpdatesPage() {
                     </TableCellLayout>
                   </TableCell>
                   <TableCell>
-                    <Button
-                      appearance="transparent"
-                      size="small"
-                      className={styles.docLink}
-                      onClick={() => setPreviewDocId(req.documentId)}
-                    >
-                      {req.documentName ?? req.documentId}
-                    </Button>
+                    {(() => {
+                      const linked = documentsById.get(req.documentId);
+                      const label = linked?.name ?? req.documentName;
+                      return (
+                        <Button
+                          appearance="transparent"
+                          size="small"
+                          className={styles.docLink}
+                          onClick={() => setPreviewDocId(req.documentId)}
+                        >
+                          <span className={styles.docCell}>
+                            <span>{label ?? 'Open document'}</span>
+                            {linked?.number ? (
+                              <span className={styles.docNumber}>{linked.number}</span>
+                            ) : null}
+                          </span>
+                        </Button>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell>{req.documentTypeName ?? '—'}</TableCell>
                   <TableCell>

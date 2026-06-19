@@ -298,7 +298,12 @@ function toSkillUpdateRequest(rec: Msfthitl_skillupdaterequests): SkillUpdateReq
       (rec as { msfthitl_skillupdatenumber?: string }).msfthitl_skillupdatenumber ?? undefined,
     name: rec.msfthitl_skillupdaterequestname,
     documentId: rec._msfthitl_documentid_value ?? '',
-    documentName: rec.msfthitl_documentidname ?? undefined,
+    documentName:
+      rec.msfthitl_documentidname ??
+      ((rec as unknown as Record<string, unknown>)[
+        '_msfthitl_documentid_value@OData.Community.Display.V1.FormattedValue'
+      ] as string | undefined) ??
+      undefined,
     documentTypeName: rec.msfthitl_documenttypename ?? undefined,
     suggestedFix: rec.msfthitl_suggestedfix,
     status: Number(rec.msfthitl_skillupdatestatus) as SkillUpdateStatus,

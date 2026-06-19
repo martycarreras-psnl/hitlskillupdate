@@ -74,7 +74,7 @@ describe('Skill Updates screen', () => {
     await screen.findByText(/detect a separate "Tax" line/i);
 
     // The first seed links to office-supplies-receipt.jpg.
-    fireEvent.click(screen.getAllByRole('button', { name: 'office-supplies-receipt.jpg' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: /office-supplies-receipt\.jpg/ })[0]);
 
     // A modal dialog opens in place — still on the Skill Updates screen.
     const dialog = await screen.findByRole('dialog');
