@@ -73,24 +73,33 @@ export function SourceFileViewer({ documentId }: { documentId: string }) {
         <Button
           as="a"
           href={data.url}
-          target="_blank"
-          rel="noreferrer"
+          download={data.fileName}
           appearance="subtle"
           size="small"
           icon={<Open16Regular />}
         >
-          Open
+          Download
         </Button>
       </div>
 
       {isImage ? (
         <img className={styles.image} src={data.url} alt={data.fileName} />
       ) : isPdf ? (
-        <iframe className={styles.pdf} src={data.url} title={data.fileName} />
+        <>
+          <iframe className={styles.pdf} src={data.url} title={data.fileName} />
+          <div className={styles.fallback}>
+            <Text size={200}>
+              Can’t see the PDF above? Some hosts block inline preview.
+            </Text>
+            <Link href={data.url} download={data.fileName}>
+              Download {data.fileName}
+            </Link>
+          </div>
+        </>
       ) : (
         <div className={styles.fallback}>
           <Text>Preview isn’t available for this file type.</Text>
-          <Link href={data.url} target="_blank" rel="noreferrer">
+          <Link href={data.url} download={data.fileName}>
             Download {data.fileName}
           </Link>
         </div>

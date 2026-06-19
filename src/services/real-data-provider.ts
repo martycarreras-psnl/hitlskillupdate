@@ -19,6 +19,7 @@ import type {
   SourceFileService,
 } from '@/services/data-contracts';
 import { getFieldMetadata } from '@/services/field-metadata-cache';
+import { blobToDataUrl } from '@/lib/file-data-url';
 import type {
   DocumentRecord,
   DocumentType,
@@ -355,8 +356,10 @@ function createSourceFileService(): SourceFileService {
 
       const mimeType = mimeFromName(fileName);
       const blob = new Blob([download.data], { type: mimeType });
+      // Serve as a data: URL — the deployed Power Apps host CSP (img-src 'self' data:)
+      // blocks blob: URLs, so object URLs never render there.
       return {
-        url: URL.createObjectURL(blob),
+        url: await blobToDataUrl(blob),
         mimeType,
         fileName,
       };

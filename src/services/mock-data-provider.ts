@@ -21,6 +21,7 @@ import type {
   SkillUpdateRequest,
 } from '@/types/domain-models';
 import { SkillUpdateStatus } from '@/types/domain-models';
+import { blobToDataUrl } from '@/lib/file-data-url';
 import {
   seedDocumentTypes,
   seedDocuments,
@@ -175,21 +176,22 @@ function createSkillUpdateRequestRepository(store: MockStore): SkillUpdateReques
 }
 
 function createSourceFileService(store: MockStore): SourceFileService {
-  // Cache one object URL per uploaded blob so repeated reads return a stable URL
-  // instead of allocating (and leaking) a new one each call.
-  const objectUrlCache = new Map<string, string>();
+  // Cache one data URL per uploaded blob so repeated reads return a stable URL
+  // instead of re-encoding the file on every read.
+  const dataUrlCache = new Map<string, string>();
   return {
     async getSourceFileUrl(documentId): Promise<SourceFileRef | null> {
       const doc = store.documents.find((d) => d.id === documentId);
       if (!doc || !doc.sourceFileName) return null;
-      // Prefer the real uploaded blob (served as an object URL) when one exists this
-      // session; seeded demo records fall back to a bundled sample asset.
+      // Prefer the real uploaded blob (served as a data: URL so it renders under the
+      // deployed host CSP) when one exists this session; seeded demo records fall back
+      // to a bundled sample asset.
       const blob = store.uploadedFiles.get(documentId);
       if (blob) {
-        let url = objectUrlCache.get(documentId);
+        let url = dataUrlCache.get(documentId);
         if (!url) {
-          url = URL.createObjectURL(blob);
-          objectUrlCache.set(documentId, url);
+          url = await blobToDataUrl(blob);
+          dataUrlCache.set(documentId, url);
         }
         return delay({
           url,
