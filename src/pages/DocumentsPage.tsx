@@ -9,6 +9,13 @@ import {
   Button,
   Card,
   Checkbox,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  DialogTrigger,
   Input,
   Select,
   Spinner,
@@ -23,18 +30,22 @@ import {
   ToastTitle,
   ToastBody,
   Toaster,
+  Tooltip,
   makeStyles,
   tokens,
   useId,
   useToastController,
 } from '@fluentui/react-components';
-import { ArrowUpload24Regular } from '@fluentui/react-icons';
-import { useDocuments, useCreateDocument } from '@/hooks/useDocuments';
+import { ArrowUpload24Regular, Delete24Regular } from '@fluentui/react-icons';
+import { useDocuments, useCreateDocument, useDeleteDocument } from '@/hooks/useDocuments';
 import { ProcessingStatus } from '@/types/domain-models';
+import type { DocumentRecord } from '@/types/domain-models';
 import {
   ALL_PROCESSING_STATUSES,
+  isAdmin,
   processingStatusLabels,
 } from '@/constants/status';
+import { useRole } from '@/hooks/useRole';
 import { ProcessingStatusBadge, ReviewStatusBadge } from '@/components/StatusBadge';
 import { EmptyState, LoadingState } from '@/components/EmptyState';
 
@@ -63,6 +74,9 @@ export function DocumentsPage() {
   const navigate = useNavigate();
   const { data: documents, isLoading } = useDocuments();
   const createDocument = useCreateDocument();
+  const deleteDocument = useDeleteDocument();
+  const { role } = useRole();
+  const admin = isAdmin(role);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toasterId = useId('documents-toaster');
@@ -71,6 +85,7 @@ export function DocumentsPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | ProcessingStatus>('all');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [search, setSearch] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<DocumentRecord | null>(null);
 
   const filtered = useMemo(() => {
     return (documents ?? []).filter((doc) => {
@@ -110,6 +125,19 @@ export function DocumentsPage() {
     );
 
     navigate(`/documents/${created.id}`);
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete) return;
+    const name = pendingDelete.documentName;
+    await deleteDocument.mutateAsync(pendingDelete.id);
+    setPendingDelete(null);
+    dispatchToast(
+      <Toast>
+        <ToastTitle>Deleted “{name}”</ToastTitle>
+      </Toast>,
+      { intent: 'success' },
+    );
   }
 
   return (
@@ -181,6 +209,7 @@ export function DocumentsPage() {
                 <TableHeaderCell>Processing</TableHeaderCell>
                 <TableHeaderCell>Review</TableHeaderCell>
                 <TableHeaderCell>Drawn</TableHeaderCell>
+                {admin ? <TableHeaderCell>Actions</TableHeaderCell> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -210,12 +239,54 @@ export function DocumentsPage() {
                     </div>
                   </TableCell>
                   <TableCell>{doc.randomDrawValue ?? '—'}</TableCell>
+                  {admin ? (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Tooltip content="Delete document" relationship="label">
+                        <Button
+                          appearance="subtle"
+                          icon={<Delete24Regular />}
+                          aria-label={`Delete ${doc.documentName}`}
+                          onClick={() => setPendingDelete(doc)}
+                        />
+                      </Tooltip>
+                    </TableCell>
+                  ) : null}
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         )}
       </Card>
+
+      <Dialog
+        open={pendingDelete !== null}
+        onOpenChange={(_e, data) => (!data.open ? setPendingDelete(null) : undefined)}
+      >
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Delete document?</DialogTitle>
+            <DialogContent>
+              This permanently removes “{pendingDelete?.documentName}” and its stored file.
+              This action cannot be undone.
+            </DialogContent>
+            <DialogActions>
+              <DialogTrigger disableButtonEnhancement>
+                <Button appearance="secondary" disabled={deleteDocument.isPending}>
+                  Cancel
+                </Button>
+              </DialogTrigger>
+              <Button
+                appearance="primary"
+                icon={deleteDocument.isPending ? <Spinner size="tiny" /> : <Delete24Regular />}
+                disabled={deleteDocument.isPending}
+                onClick={confirmDelete}
+              >
+                Delete
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
     </div>
   );
 }

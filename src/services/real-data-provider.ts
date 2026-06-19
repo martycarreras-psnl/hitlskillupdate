@@ -181,6 +181,10 @@ function createDocumentRepository(): DocumentRepository {
       const updated = unwrap(await Msfthitl_documentsService.update(id, body), 'documents.update()');
       return toDocument(updated);
     },
+    async delete(id) {
+      // The generated delete throws on failure (returns void on success).
+      await Msfthitl_documentsService.delete(id);
+    },
   };
 }
 

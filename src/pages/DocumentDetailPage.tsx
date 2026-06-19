@@ -2,25 +2,54 @@
 // Read-only here by design; editing happens in the Review Workspace. Flagged-but-not-yet-
 // processed documents show a "waiting for processing" state (they are not yet reviewable).
 
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Badge,
   Button,
   Card,
+  Dialog,
+  DialogActions,
+  DialogBody,
+  DialogContent,
+  DialogSurface,
+  DialogTitle,
+  DialogTrigger,
   Divider,
+  Menu,
+  MenuItem,
+  MenuList,
+  MenuPopover,
+  MenuTrigger,
   MessageBar,
   MessageBarBody,
   MessageBarTitle,
+  Spinner,
   Text,
   Title2,
   Title3,
+  Toast,
+  ToastTitle,
+  Toaster,
   makeStyles,
   tokens,
+  useId,
+  useToastController,
 } from '@fluentui/react-components';
-import { ArrowLeft24Regular, ArrowClockwise24Regular } from '@fluentui/react-icons';
-import { useDocument, useUpdateDocument } from '@/hooks/useDocuments';
+import {
+  ArrowLeft24Regular,
+  ArrowClockwise24Regular,
+  ChevronDown24Regular,
+  Delete24Regular,
+} from '@fluentui/react-icons';
+import { useDocument, useUpdateDocument, useDeleteDocument } from '@/hooks/useDocuments';
 import { ProcessingStatus } from '@/types/domain-models';
-import { canReview } from '@/constants/status';
+import {
+  ALL_PROCESSING_STATUSES,
+  canReview,
+  isAdmin,
+  processingStatusLabels,
+} from '@/constants/status';
 import { isActionableReview } from '@/utils/reviewQueue';
 import { useRole } from '@/hooks/useRole';
 import { ProcessingStatusBadge, ReviewStatusBadge } from '@/components/StatusBadge';
@@ -56,7 +85,11 @@ export function DocumentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { data: doc, isLoading } = useDocument(id);
   const updateDocument = useUpdateDocument();
+  const deleteDocument = useDeleteDocument();
   const { role } = useRole();
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const toasterId = useId('document-detail-toaster');
+  const { dispatchToast } = useToastController(toasterId);
 
   if (isLoading) return <LoadingState />;
   if (!doc) return <EmptyState icon="❓" title="Document not found" />;
@@ -64,6 +97,7 @@ export function DocumentDetailPage() {
   const isProcessed = doc.processingStatus === ProcessingStatus.Processed;
   const isFailed = doc.processingStatus === ProcessingStatus.Failed;
   const canBeReviewed = isActionableReview(doc);
+  const admin = isAdmin(role);
 
   async function requeue() {
     if (!doc) return;
@@ -73,8 +107,34 @@ export function DocumentDetailPage() {
     });
   }
 
+  async function changeStatus(status: ProcessingStatus) {
+    if (!doc || status === doc.processingStatus) return;
+    await updateDocument.mutateAsync({ id: doc.id, changes: { processingStatus: status } });
+    dispatchToast(
+      <Toast>
+        <ToastTitle>Status updated to {processingStatusLabels[status]}</ToastTitle>
+      </Toast>,
+      { intent: 'success' },
+    );
+  }
+
+  async function confirmDelete() {
+    if (!doc) return;
+    const name = doc.documentName;
+    await deleteDocument.mutateAsync(doc.id);
+    setConfirmDeleteOpen(false);
+    navigate('/documents');
+    dispatchToast(
+      <Toast>
+        <ToastTitle>Deleted “{name}”</ToastTitle>
+      </Toast>,
+      { intent: 'success' },
+    );
+  }
+
   return (
     <div className={styles.root}>
+      <Toaster toasterId={toasterId} />
       <Button appearance="subtle" icon={<ArrowLeft24Regular />} onClick={() => navigate('/documents')}>
         Back to documents
       </Button>
@@ -106,6 +166,72 @@ export function DocumentDetailPage() {
             <Button appearance="primary" onClick={() => navigate(`/review/${doc.id}`)}>
               Open in review
             </Button>
+          ) : null}
+          {admin ? (
+            <Menu>
+              <MenuTrigger disableButtonEnhancement>
+                <Button
+                  icon={<ChevronDown24Regular />}
+                  iconPosition="after"
+                  disabled={updateDocument.isPending}
+                >
+                  Set status
+                </Button>
+              </MenuTrigger>
+              <MenuPopover>
+                <MenuList>
+                  {ALL_PROCESSING_STATUSES.map((status) => (
+                    <MenuItem
+                      key={status}
+                      disabled={status === doc.processingStatus}
+                      onClick={() => changeStatus(status)}
+                    >
+                      {processingStatusLabels[status]}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </MenuPopover>
+            </Menu>
+          ) : null}
+          {admin ? (
+            <Dialog
+              open={confirmDeleteOpen}
+              onOpenChange={(_e, data) => setConfirmDeleteOpen(data.open)}
+            >
+              <DialogTrigger disableButtonEnhancement>
+                <Button
+                  appearance="outline"
+                  icon={<Delete24Regular />}
+                  disabled={deleteDocument.isPending}
+                >
+                  Delete
+                </Button>
+              </DialogTrigger>
+              <DialogSurface>
+                <DialogBody>
+                  <DialogTitle>Delete document?</DialogTitle>
+                  <DialogContent>
+                    This permanently removes “{doc.documentName}” and its stored file. This
+                    action cannot be undone.
+                  </DialogContent>
+                  <DialogActions>
+                    <DialogTrigger disableButtonEnhancement>
+                      <Button appearance="secondary" disabled={deleteDocument.isPending}>
+                        Cancel
+                      </Button>
+                    </DialogTrigger>
+                    <Button
+                      appearance="primary"
+                      icon={deleteDocument.isPending ? <Spinner size="tiny" /> : <Delete24Regular />}
+                      disabled={deleteDocument.isPending}
+                      onClick={confirmDelete}
+                    >
+                      Delete
+                    </Button>
+                  </DialogActions>
+                </DialogBody>
+              </DialogSurface>
+            </Dialog>
           ) : null}
         </div>
       </div>

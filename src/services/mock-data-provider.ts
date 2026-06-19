@@ -106,6 +106,13 @@ function createDocumentRepository(store: MockStore): DocumentRepository {
       store.documents[index] = { ...store.documents[index], ...changes, id };
       return delay(clone(store.documents[index]));
     },
+    async delete(id) {
+      const index = store.documents.findIndex((doc) => doc.id === id);
+      if (index < 0) throw new Error(`Document ${id} not found`);
+      store.documents.splice(index, 1);
+      store.uploadedFiles.delete(id);
+      return delay(undefined);
+    },
   };
 }
 

@@ -45,6 +45,7 @@ export interface DocumentRepository {
   getById(id: string): Promise<DocumentRecord | null>;
   create(input: CreateDocumentInput): Promise<DocumentRecord>;
   update(id: string, changes: Partial<DocumentRecord>): Promise<DocumentRecord>;
+  delete(id: string): Promise<void>;
 }
 
 export interface DocumentTypeRepository {

@@ -115,6 +115,17 @@ export function useUpdateDocument() {
   });
 }
 
+export function useDeleteDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => provider.documents.delete(id),
+    onSuccess: (_void, id) => {
+      qc.removeQueries({ queryKey: queryKeys.document(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.documents });
+    },
+  });
+}
+
 export function useUpdateReviewSettings() {
   const qc = useQueryClient();
   return useMutation({
